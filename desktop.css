@@ -1,0 +1,38 @@
+/* Desktop-only enhancements. Mobile layout remains controlled by styles.css. */
+@media (min-width:1000px){
+  body{background:radial-gradient(circle at 20% -10%,rgba(52,211,153,.07),transparent 30%),var(--bg)}
+  .app-header{padding:16px max(28px,calc((100vw - 1440px)/2));}
+  .app-header h1{font-size:24px}
+  .month-bar{position:sticky;top:76px;z-index:18;background:rgba(11,16,32,.9);backdrop-filter:blur(14px);border-bottom:1px solid rgba(39,51,75,.45);padding:10px 24px 12px;grid-template-columns:44px minmax(260px,340px) 44px}
+  .app-main{width:min(1440px,100%);padding:20px 28px 80px;display:grid;grid-template-columns:minmax(320px,390px) minmax(0,1fr);gap:18px;align-items:start}
+  .summary-grid{grid-column:1/-1;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  .summary-card{padding:18px 20px;min-height:92px}
+  .summary-card strong{font-size:23px}
+  #internalTransferNote{grid-column:1/-1;margin:0 2px -3px}
+  .app-main>.panel{margin-top:0}
+  .app-main>.panel:has(#categoryChart){grid-column:1;position:sticky;top:145px;max-height:calc(100vh - 170px);overflow:auto}
+  .app-main>.panel:has(#transactionsList){grid-column:2;min-width:0;min-height:620px}
+  .panel{padding:20px;border-radius:22px}
+  .panel-head h2{font-size:21px}
+  .toolbar{flex-wrap:wrap;align-items:center}
+  .search{max-width:none;min-width:260px;flex:1 1 320px}
+  .compact-select{flex:0 0 auto;min-width:150px}
+  .bars{gap:14px}.bar-row{grid-template-columns:minmax(120px,1.1fr) 2fr auto;font-size:13px}
+  .transactions{gap:8px;max-height:calc(100vh - 260px);overflow:auto;padding-right:5px;scrollbar-gutter:stable}
+  .transactions::-webkit-scrollbar,.app-main>.panel:has(#categoryChart)::-webkit-scrollbar{width:9px}
+  .transactions::-webkit-scrollbar-thumb,.app-main>.panel:has(#categoryChart)::-webkit-scrollbar-thumb{background:#28354e;border-radius:999px}
+  .tx{grid-template-columns:48px minmax(0,1fr) auto;padding:12px 14px;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+  .tx:hover{border-color:#33435f;background:#111c30;transform:translateY(-1px)}
+  .tx-icon{width:42px;height:42px}.tx-title{font-size:14px}.tx-meta{font-size:12px}.tx-amount{font-size:14px;min-width:120px}
+  .fab{left:auto;right:32px;bottom:28px;transform:none;padding:15px 24px;box-shadow:0 14px 38px rgba(0,0,0,.46)}
+  #importDialog{width:min(1120px,calc(100% - 56px))}
+  #importDialog .dialog-card{padding:24px}
+  .import-table{font-size:13px}.import-table th,.import-table td{padding:10px 8px}
+  #settingsDialog{width:min(680px,calc(100% - 56px))}
+  #transactionDialog{width:min(620px,calc(100% - 56px))}
+}
+
+@media (min-width:1500px){
+  .app-main{grid-template-columns:minmax(360px,430px) minmax(0,1fr)}
+  .transactions{max-height:calc(100vh - 250px)}
+}
