@@ -1,0 +1,24 @@
+Finanzas Privadas v0.2 — Validación
+
+- Sintaxis JavaScript: OK (app, crypto.js, db.js, parser.js, sw.js)
+- manifest.webmanifest: JSON válido
+- Parser Brubank conservado desde v0.1 y validado contra el estado de cuenta de referencia:
+  - 50 movimientos (42 ARS + 8 USD)
+  - Totales de débito/crédito coinciden con el resumen impreso por Brubank
+- Parser Naranja X validado contra "Resumen 202609.pdf":
+  - 43 movimientos (39 ARS + 4 USD)
+  - ARS ingresos: $260.522,09
+  - ARS egresos: $278.467,75
+  - USD ingresos: USD 45,00
+  - USD egresos: USD 40,76
+  - Todos los totales coinciden con el resumen impreso por Naranja X
+- Detección automática Brubank / Naranja X
+- Filtro por cuenta y moneda
+- Transferencias internas excluidas de los totales cuando son explícitas o se emparejan entre cuentas
+- Privacidad de despliegue: robots.txt + noindex/nofollow/noarchive
+- El PDF de referencia y sus datos NO están incluidos en este repositorio
+- Persistencia: IndexedDB cifrado (AES-GCM + PBKDF2-SHA256)
+- Detección de duplicados: activa
+- PWA: manifest + service worker incluidos
+
+Nota: PDF.js y SheetJS se descargan de cdnjs al primer uso. Los PDFs se procesan localmente en el navegador y no se envían al CDN.
