@@ -1,0 +1,20 @@
+
+let sheetPromise=null;function loadSheetJs(){if(window.XLSX)return Promise.resolve(window.XLSX);if(!sheetPromise)sheetPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>resolve(window.XLSX);s.onerror=reject;document.head.append(s)});return sheetPromise}
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+async function exportBackup(){const blob=await dbGet(VAULT_KEY);downloadBlob(new Blob([JSON.stringify({app:'Finanzas Privadas',createdAt:new Date().toISOString(),vault:blob},null,2)],{type:'application/json'}),`finanzas_${new Date().toISOString().slice(0,10)}.finbackup`);toast('Backup cifrado creado.')}
+function startRestore(){restoreBlob=null;$('#backupInput').value='';$('#backupInput').click()}
+async function handleBackupFile(file){try{const j=JSON.parse(await file.text());if(!j.vault?.cipher)throw new Error();restoreBlob=j.vault;$('#restorePassword').value='';$('#restoreDialog').showModal()}catch{toast('Backup no válido.',true)}}
+async function confirmRestore(){if(!restoreBlob)return;try{await decryptJson(restoreBlob,$('#restorePassword').value);await dbSet(VAULT_KEY,restoreBlob);$('#restoreDialog').close();toast('Backup restaurado. Desbloquea con su clave.');setTimeout(()=>lock(),500)}catch{toast('Clave incorrecta para este backup.',true)}}
+async function wipe(){if(!confirm('Esto borrará toda la bóveda de este dispositivo. ¿Continuar?'))return;if(!confirm('Última confirmación: esta acción no se puede deshacer sin un backup.'))return;await dbDelete(VAULT_KEY);location.reload()}
+async function addCategory(){const c=$('#newCategoryInput').value.trim();if(!c)return;if(!state.categories.includes(c)){state.categories.push(c);await save();renderCategories()}$('#newCategoryInput').value=''}
+function bind(){
+  $('#createVaultBtn').onclick=createVault;$('#unlockBtn').onclick=unlock;$('#unlockPassword').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});$('#lockBtn').onclick=lock;
+  $('#fabImport').onclick=choosePdf;$('#pdfInput').onchange=e=>handlePdf(e.target.files[0]);$('#confirmImportBtn').onclick=confirmImport;
+  $('#monthSelect').onchange=render;$('#prevMonthBtn').onclick=()=>changeMonth(1);$('#nextMonthBtn').onclick=()=>changeMonth(-1);$('#searchInput').oninput=renderTransactions;$('#currencyFilter').onchange=renderTransactions;$('#sourceFilter').onchange=renderTransactions;
+  $$('[data-tab]').forEach(b=>b.onclick=()=>{if(b.dataset.tab==='add')addTransaction();if(b.dataset.tab==='settings'){$('#settingsDialog').showModal();renderCategories()} });
+  $('#saveTxBtn').onclick=saveTransaction;$('#deleteTxBtn').onclick=deleteTransaction;$('#exportCsvBtn').onclick=exportCsv;$('#exportExcelBtn').onclick=exportExcel;$('#exportBackupBtn').onclick=exportBackup;$('#restoreBackupBtn').onclick=startRestore;$('#restoreFromLockBtn').onclick=startRestore;$('#restoreFromFirstRunBtn').onclick=startRestore;$('#backupInput').onchange=e=>handleBackupFile(e.target.files[0]);$('#confirmRestoreBtn').onclick=confirmRestore;$('#wipeBtn').onclick=wipe;$('#addCategoryBtn').onclick=addCategory;
+  $('#autoLockSelect').onchange=async e=>{state.settings.autoLock=Number(e.target.value);await save();setupAutoLock();toast('Bloqueo automático actualizado.')};
+  ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,resetActivity,{passive:true}));
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#installBtn').hidden=false});$('#installBtn').onclick=async()=>{if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;$('#installBtn').hidden=true}};
+}
+init();
