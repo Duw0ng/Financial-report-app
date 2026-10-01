@@ -29,7 +29,14 @@ function groupRows(items,width=595){
 }
 function rowText(row){return normalize(row.items.map(i=>i.str).join(' '))}
 function documentText(pageRows){return pageRows.flatMap(rows=>rows.map(rowText)).join('\n')}
-function detectBank(rawText){if(/Naranja\s*X|NaranjaX|Naranja Digital|Datos cuenta en pesos/i.test(rawText))return 'Naranja X';if(/Brubank|Mi cuenta\s+Resumen|Fecha\s+#Ref\s+Descripci[oó]n\s+D[eé]bito\s+Cr[eé]dito\s+Saldo/i.test(rawText))return 'Brubank';return ''}
+function detectBank(rawText){
+  const t=fold(rawText);
+  const brubankStrong=/MI CUENTA\s+RESUMEN/.test(t)||/BRUBANK\s+S\.?A\.?U?\.?/.test(t)||(/FECHA\s+#?REF\s+DESCRIPCION\s+DEBITO\s+CREDITO\s+SALDO/.test(t)&&/MONEDA\s+(PESOS|DOLAR)/.test(t));
+  if(brubankStrong)return 'Brubank';
+  const naranjaStrong=/NARANJA DIGITAL/.test(t)||/DATOS CUENTA EN (PESOS|DOLARES)/.test(t)||(/OPERACION/.test(t)&&/DINERO A LA FECHA/.test(t)&&/RESUMEN DEL MES/.test(t));
+  if(naranjaStrong)return 'Naranja X';
+  return '';
+}
 function currencySignal(text,current='ARS'){const t=fold(text);if(/DATOS CUENTA EN DOLARES|MONEDA DOLARES|DOLAR \(USD\)|MONEDA DOLAR|SALDO INICIAL U\$S|DINERO INICIAL USD/.test(t))return 'USD';if(/DATOS CUENTA EN PESOS|MONEDA PESOS|PESOS \(ARS\)|MONEDA PESOS \(ARS\)|SALDO INICIAL \$|DINERO INICIAL \$/.test(t))return 'ARS';return current}
 
 function findHeaderX(row,rx){const it=row.items.find(i=>rx.test(fold(i.str)));return it?.x??null}
