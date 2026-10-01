@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="description" content="Finanzas privadas: procesa estados de cuenta localmente en tu dispositivo." />
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet" />
+  <meta name="referrer" content="no-referrer" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icons/icon.svg" />
+  <link rel="apple-touch-icon" href="./icons/icon.svg" />
+  <link rel="stylesheet" href="./styles.css" />
+  <title>Finanzas Privadas</title>
+</head>
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <main id="lockScreen" class="screen center-screen">
+    <section class="auth-card">
+      <div class="brand-mark">FP</div>
+      <h1>Finanzas Privadas</h1>
+      <p class="muted">Tus movimientos se cifran y permanecen en este dispositivo.</p>
+
+      <div id="firstRunBox" hidden>
+        <h2>Crear bóveda</h2>
+        <label>Clave o PIN largo
+          <input id="newPassword" type="password" inputmode="text" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 caracteres" />
+        </label>
+        <label>Repetir clave
+          <input id="newPassword2" type="password" autocomplete="new-password" minlength="6" placeholder="Repite la clave" />
+        </label>
+        <button id="createVaultBtn" class="primary full">Crear bóveda privada</button>
+        <button id="restoreFromFirstRunBtn" class="ghost full">Restaurar backup cifrado</button>
+        <p class="tiny muted">La clave no se envía a ningún servidor y no puede recuperarse si la olvidas.</p>
+      </div>
+
+      <div id="unlockBox" hidden>
+        <label>Clave
+          <input id="unlockPassword" type="password" autocomplete="current-password" placeholder="Tu clave" />
+        </label>
+        <button id="unlockBtn" class="primary full">Desbloquear</button>
+        <button id="restoreFromLockBtn" class="ghost full">Restaurar backup cifrado</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="app" hidden>
+    <header class="app-header">
+      <div>
+        <div class="eyebrow">LOCAL + CIFRADO</div>
+        <h1>Mis Finanzas</h1>
+      </div>
+      <div class="header-actions">
+        <button id="installBtn" class="icon-btn" hidden title="Instalar app">⬇</button>
+        <button id="lockBtn" class="icon-btn" title="Bloquear">🔒</button>
+      </div>
+    </header>
+
+    <nav class="month-bar">
+      <button id="prevMonthBtn" class="icon-btn">‹</button>
+      <select id="monthSelect" aria-label="Mes"></select>
+      <button id="nextMonthBtn" class="icon-btn">›</button>
+    </nav>
+
+    <main class="app-main">
+      <section class="summary-grid">
+        <article class="summary-card">
+          <span>Ingresos ARS</span><strong id="incomeARS">$0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Gastos ARS</span><strong id="expenseARS">$0</strong>
+        </article>
+        <article class="summary-card accent">
+          <span>Balance ARS</span><strong id="balanceARS">$0</strong>
+        </article>
+        <article class="summary-card">
+          <span>Balance de movimientos USD</span><strong id="usdSummary">U$S 0</strong>
+        </article>
+      </section>
+      <p id="internalTransferNote" class="tiny muted" aria-live="polite"></p>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Gastos por categoría</h2><p class="muted small">Solo débitos del mes seleccionado.</p></div>
+        </div>
+        <div id="categoryChart" class="bars"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head wrap">
+          <div><h2>Movimientos</h2><p id="movementCount" class="muted small"></p></div>
+          <div class="toolbar">
+            <input id="searchInput" class="search" type="search" placeholder="Buscar comercio o categoría" />
+            <select id="sourceFilter" class="compact-select" aria-label="Cuenta">
+              <option value="ALL">Todas las cuentas</option>
+            </select>
+            <select id="currencyFilter" class="compact-select" aria-label="Moneda">
+              <option value="ALL">ARS + USD</option>
+              <option value="ARS">ARS</option>
+              <option value="USD">USD</option>
+            </select>
+          </div>
+        </div>
+        <div id="transactionsList" class="transactions"></div>
+      </section>
+    </main>
+
+    <button id="fabImport" class="fab">＋ Importar PDF bancario</button>
+
+    <nav class="bottom-nav">
+      <button data-tab="home" class="active">⌂<span>Inicio</span></button>
+      <button data-tab="add">＋<span>Agregar</span></button>
+      <button data-tab="settings">⚙<span>Ajustes</span></button>
+    </nav>
+  </div>
+
+  <input id="pdfInput" type="file" accept="application/pdf,.pdf" hidden />
+  <input id="backupInput" type="file" accept=".finbackup,application/json" hidden />
+
+  <dialog id="importDialog">
+    <form method="dialog" class="dialog-card large-dialog">
+      <div class="dialog-head">
+        <div><h2>Importar estado de cuenta</h2><p class="muted small">El PDF se procesa localmente y no se sube.</p></div>
+        <button value="cancel" class="icon-btn">✕</button>
+      </div>
+      <div id="importProgress" class="progress-box">Selecciona un PDF de Brubank o Naranja X.</div>
+      <div id="importPreview"></div>
+      <div class="dialog-actions">
+        <button id="confirmImportBtn" type="button" class="primary" disabled>Guardar movimientos</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="transactionDialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-head"><h2 id="txDialogTitle">Editar movimiento</h2><button value="cancel" class="icon-btn">✕</button></div>
+      <input id="editTxId" type="hidden" />
+      <label>Fecha<input id="editDate" type="date" /></label>
+      <label>Descripción<input id="editDescription" type="text" /></label>
+      <label>Nombre corto / comercio<input id="editMerchant" type="text" placeholder="Ej. Supermercado" /></label>
+      <label>Categoría<select id="editCategory"></select></label>
+      <div class="two-col">
+        <label>Tipo<select id="editType"><option value="debit">Gasto</option><option value="credit">Ingreso</option></select></label>
+        <label>Moneda<select id="editCurrency"><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
+      </div>
+      <label>Importe<input id="editAmount" type="number" inputmode="decimal" step="0.01" min="0" /></label>
+      <label class="check-row"><input id="learnRule" type="checkbox" checked /> Recordar esta categoría para movimientos parecidos</label>
+      <div class="dialog-actions split">
+        <button id="deleteTxBtn" type="button" class="danger ghost">Eliminar</button>
+        <button id="saveTxBtn" type="button" class="primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-head"><h2>Ajustes y privacidad</h2><button value="cancel" class="icon-btn">✕</button></div>
+      <div class="privacy-box">
+        <strong>Privacidad</strong>
+        <p>Los PDFs de Brubank y Naranja X se leen en memoria. La bóveda guardada está cifrada con AES-GCM usando una clave derivada de tu contraseña. Los datos financieros no se guardan en GitHub.</p>
+      </div>
+      <label>Bloqueo automático
+        <select id="autoLockSelect">
+          <option value="2">2 minutos</option>
+          <option value="5">5 minutos</option>
+          <option value="10">10 minutos</option>
+          <option value="30">30 minutos</option>
+          <option value="0">Solo manual</option>
+        </select>
+      </label>
+      <hr />
+      <h3>Exportar</h3>
+      <button id="exportExcelBtn" type="button" class="full">Exportar Excel (.xlsx)</button>
+      <button id="exportCsvBtn" type="button" class="full">Exportar CSV</button>
+      <button id="exportBackupBtn" type="button" class="full">Crear backup cifrado</button>
+      <button id="restoreBackupBtn" type="button" class="full">Restaurar backup cifrado</button>
+      <p class="tiny muted">Excel y CSV no están cifrados. El backup .finbackup sí conserva el cifrado.</p>
+      <hr />
+      <h3>Categorías</h3>
+      <div id="categoryManager"></div>
+      <div class="inline-add"><input id="newCategoryInput" placeholder="Nueva categoría" /><button id="addCategoryBtn" type="button">Agregar</button></div>
+      <hr />
+      <button id="wipeBtn" type="button" class="danger full">Borrar todos los datos de este dispositivo</button>
+    </form>
+  </dialog>
+
+  <dialog id="restoreDialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-head"><h2>Restaurar backup</h2><button value="cancel" class="icon-btn">✕</button></div>
+      <p class="muted">Introduce la clave con la que fue creado el backup. Al restaurarlo reemplazará la bóveda local actual.</p>
+      <label>Clave del backup<input id="restorePassword" type="password" /></label>
+      <button id="confirmRestoreBtn" type="button" class="primary full">Restaurar</button>
+    </form>
+  </dialog>
+
+  <script type="module" src="./app-loader.js"></script>
+</body>
+</html>
