@@ -1,0 +1,23 @@
+turn;const s=$('#editCategory');s.innerHTML=state.categories.map(c=>`<option>${escapeHtml(c)}</option>`).join('');$('#categoryManager').innerHTML=state.categories.map(c=>`<div class="category-chip"><span>${icons[c]||'•'} ${escapeHtml(c)}</span><span class="badge">${state.transactions.filter(t=>t.category===c).length}</span></div>`).join('');$('#autoLockSelect').value=String(state.settings.autoLock??10)}
+
+function renderSourceOptions(){const sel=$('#sourceFilter');if(!sel)return;const old=sel.value||'ALL';const sources=[...new Set(state.transactions.map(t=>t.source).filter(Boolean))].sort();sel.innerHTML='<option value="ALL">Todas las cuentas</option>'+sources.map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');if([...sel.options].some(o=>o.value===old))sel.value=old}
+function reconcileInternalTransfers(){
+  if(!state?.transactions)return;
+  for(const t of state.transactions){if(t.internalTransferReason==='paired'){t.internalTransfer=false;t.internalTransferReason=''}}
+  const arr=state.transactions;
+  for(let i=0;i<arr.length;i++){
+    const a=arr[i]; if(a.internalTransfer||!/(transferencia|cuenta tuya)/i.test(a.description||''))continue;
+    for(let j=i+1;j<arr.length;j++){
+      const b=arr[j];
+      if(b.internalTransfer||a.source===b.source||a.date!==b.date||a.currency!==b.currency||a.type===b.type||Math.abs(a.amount-b.amount)>0.005)continue;
+      if(!/(transferencia|cuenta tuya)/i.test(`${a.description} ${b.description}`))continue;
+      a.internalTransfer=b.internalTransfer=true;a.internalTransferReason=b.internalTransferReason='paired';break;
+    }
+  }
+}
+
+async function choosePdf(){pendingImport=null;$('#pdfInput').value='';$('#pdfInput').click()}
+async function handlePdf(file){if(!file)return;$('#importDialog').showModal();$('#confirmImportBtn').disabled=true;$('#importPreview').innerHTML='';$('#importProgress').textContent='Preparando lector PDF…';try{const parsed=await parseBankPdf(file,msg=>$('#importProgress').textContent=msg);let dup=0;for(const t of parsed.transactions){t.category=guessCategory(t.description,t.type);t.merchant=merchantFromDescription(t.description);t.id=await hashText(`${t.date}|${t.ref}|${t.description}|${t.type}|${t.currency}|${t.amount}|${t.balance}`);if(state.transactions.some(x=>x.id===t.id))dup++}pendingImport={...parsed,transactions:parsed.transactions.filter(t=>!state.transactions.some(x=>x.id===t.id))};$('#importProgress').innerHTML=`<strong>${escapeHtml(parsed.bank)}</strong> · detectados <strong>${parsed.transactions.length}</strong> movimientos en ${parsed.pages} página(s). ${dup?`<strong>${dup}</strong> ya existían y se omitirán.`:'No se detectaron duplicados.'}`;renderImportPreview();$('#confirmImportBtn').disabled=!pendingImport.transactions.length}catch(e){console.error(e);$('#importProgress').textContent=e?.message||'No pude leer este PDF. Actualmente se admiten estados de cuenta Brubank y Naranja X con texto seleccionable.';toast('Error al procesar el PDF.',true)}}
+function renderImportPreview(){const arr=pendingImport?.transactions||[];$('#importPreview').innerHTML=arr.length?`<div style="overflow:auto"><table class="import-table"><thead><tr><th>Fecha</th><th>Cuenta</th><th>Descripción</th><th>Cat.</th><th>Importe</th></tr></thead><tbody>${arr.slice(0,50).map(t=>`<tr><td>${t.date}</td><td>${escapeHtml(t.source)}</td><td>${escapeHtml(t.description)}</td><td>${escapeHtml(t.category)}</td><td>${t.type==='credit'?'+':'−'}${formatMoney(t.amount,t.currency)}${t.internalTransfer?' ↔':''}</td></tr>`).join('')}</tbody></table></div>${arr.length>50?`<p class="tiny muted">Mostrando 50 de ${arr.length}.</p>`:''}`:'<div class="empty">No hay movimientos nuevos para importar.</div>'}
+async function confirmImport(){if(!pendingImport?.transactions.length)return;const importedMonth=monthKey(pendingImport.transactions[0].date);state.transactions.push(...pendingImport.transactions);reconcileInternalTransfers();await save();const n=pendingImport.transactions.length;pendingImport=null;$('#importDialog').close();renderMonthOptions(false);if(importedMonth&&[...$('#monthSelect').options].some(o=>o.value===importedMonth))$('#monthSelect').value=importedMonth;renderCategories();render();toast(`${n} movimientos importados.`)}
+function editTransaction(id){const t=state.transactions.find(x=>x.id===id);if(!t)return;$('#txDialogTitle').textContent='Editar movimiento';$('#editTxId').value=t.id;$('#editDate').value=t.date;$('#editDescription').value=t.description;$('#editMer
