@@ -5,7 +5,7 @@ import {shiftMonth,validMonth} from './ledger.js';
 
 const round=n=>Math.round((n+Number.EPSILON)*100)/100;
 const cents=n=>Math.round(Number(n)*100);
-const validValue=n=>Number.isFinite(Number(n))&&Number(n)>=0&&Number(n)<=1e12;
+const validValue=n=>Number.isFinite(Number(n))&&Number(n)>=0&&Number(n)<=1e10;
 export function conversion(amount,from,to,quote){
   if(!validValue(amount)||!['ARS','USD'].includes(from)||!['ARS','USD'].includes(to))return null;
   if(from===to)return round(Number(amount));
@@ -49,7 +49,7 @@ export function goalForecast(goal,nowMonth,quote=null){
   const remaining=round(Math.max(0,g.target-g.saved));
   const progress=Math.min(100,Math.max(0,round(g.saved/g.target*100)));
   const monthsToGoal=remaining===0?0:g.monthly>0?Math.ceil(remaining/g.monthly):null;
-  const finishMonth=monthsToGoal===null?null:shiftMonth(nowMonth,monthsToGoal);
+  const finishMonth=monthsToGoal===null||monthsToGoal>600?null:shiftMonth(nowMonth,monthsToGoal);
   const monthsToDeadline=g.deadline?monthDistance(nowMonth,g.deadline):null;
   const requiredMonthly=monthsToDeadline===null||monthsToDeadline<=0
     ?null:round(Math.ceil(remaining/monthsToDeadline*100)/100);
