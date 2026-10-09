@@ -129,15 +129,23 @@ function renderCategories(){if(!state)return;const s=$('#editCategory');s.innerH
 function renderSourceOptions(){const sel=$('#sourceFilter');if(!sel)return;const old=sel.value||'ALL';const sources=[...new Set(state.transactions.map(t=>t.source).filter(Boolean))].sort();sel.innerHTML='<option value="ALL">Todas las cuentas</option>'+sources.map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join('');if([...sel.options].some(o=>o.value===old))sel.value=old}
 function reconcileInternalTransfers(){
   if(!state?.transactions)return;
-  for(const t of state.transactions){if(t.internalTransferReason==='paired'){t.internalTransfer=false;t.internalTransferReason=''}}
-  const arr=state.transactions;
+  // Keep explicitly marked movements; recompute inferred pairs on each edit/import.
+  for(const t of state.transactions){
+    if(t.internalTransferReason==='paired'){t.internalTransfer=false;t.internalTransferReason=''}
+  }
+  const arr=state.transactions,used=new Set();
+  const transferHint=t=>t.internalTransferReason==='explicit'||/(transferencia|cuenta tuya)/i.test(t.description||'');
   for(let i=0;i<arr.length;i++){
-    const a=arr[i]; if(a.internalTransfer||!/(transferencia|cuenta tuya)/i.test(a.description||''))continue;
+    const a=arr[i];
+    if(used.has(a.id)||!transferHint(a))continue;
     for(let j=i+1;j<arr.length;j++){
       const b=arr[j];
-      if(b.internalTransfer||a.source===b.source||a.date!==b.date||a.currency!==b.currency||a.type===b.type||Math.abs(a.amount-b.amount)>0.005)continue;
-      if(!/(transferencia|cuenta tuya)/i.test(`${a.description} ${b.description}`))continue;
-      a.internalTransfer=b.internalTransfer=true;a.internalTransferReason=b.internalTransferReason='paired';break;
+      if(used.has(b.id)||!transferHint(b)||a.source===b.source||a.date!==b.date||
+         a.currency!==b.currency||a.type===b.type||Math.abs(a.amount-b.amount)>0.005)continue;
+      a.internalTransfer=b.internalTransfer=true;
+      if(a.internalTransferReason!=='explicit')a.internalTransferReason='paired';
+      if(b.internalTransferReason!=='explicit')b.internalTransferReason='paired';
+      used.add(a.id);used.add(b.id);break;
     }
   }
 }
