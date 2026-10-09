@@ -30,3 +30,6 @@ dialog{width:min(580px,calc(100% - 24px));max-height:90vh;border:1px solid var(-
 .savings-progress-track>div{height:100%;width:0%;background:linear-gradient(90deg,#60a5fa,#6ee7b7);border-radius:99px;transition:width .3s}
 .tx-amount.saving{color:#93c5fd}
 @media(max-width:440px){.summary-card{padding:13px}.summary-card strong{font-size:17px}.two-col{gap:7px}.two-col label{min-width:0}}
+
+.ledger-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.ledger-controls .quick-saving{background:#17263d;border-color:#28466f;color:#bfdbfe;font-weight:700}
