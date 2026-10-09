@@ -15,6 +15,6 @@ if(!authorized&&match){
 if(!authorized){
   document.body.innerHTML='<main style="min-height:100vh;display:grid;place-items:center;background:#0b1020;color:#94a3b8;font-family:system-ui;padding:24px;text-align:center"><div><h1 style="color:#e2e8f0;font-size:22px">Página no disponible</h1><p>El enlace no es válido para este dispositivo.</p></div></main>';
 }else{
-  const desktopCss=document.createElement('link');desktopCss.rel='stylesheet';desktopCss.href='./desktop.css?v=8';document.head.append(desktopCss);
-  await import('./app-v3.js?v=8');
+  const desktopCss=document.createElement('link');desktopCss.rel='stylesheet';desktopCss.href='./desktop.css?v=9';document.head.append(desktopCss);
+  await import('./app-v3.js?v=9');
 }
