@@ -87,3 +87,12 @@ El disponible se calcula a partir de los movimientos que registra la app, no con
 - La compra de USD se puede registrar con saldo estimado previa confirmación; nunca se bloquea por no haber configurado la apertura.
 - El saldo inicial manual sigue siendo opcional, para casos de PDF incompleto, cuentas no importadas, efectivo fuera del banco u otros ajustes. El botón **Volver al cálculo automático del PDF** desactiva ese ajuste sin borrar movimientos.
 - Los saldos de PDF corresponden a fechas de sus extractos: no son una conexión bancaria ni una garantía de disponibilidad actual; importar los extractos recientes mejora la precisión.
+
+## Simulador de ahorro y metas privadas (v0.6)
+- Nuevo **Simulador de ahorro**: elegí cuánto aportar por mes, por cuántos meses (1–600), el monto de partida y si querés simular en **ARS o USD**. El resultado muestra el total nominal, cuánto agregarías, equivalencia en la otra moneda a la cotización actual (si está disponible) y un gráfico con hitos del plazo. Podés guardar tu escenario cifrado en tu dispositivo.
+- **Mis metas de ahorro**: creá tantos objetivos como quieras (ej. “Viaje a Japón”) con nombre, moneda, monto objetivo, ahorro ya asignado, contribución mensual y fecha límite opcional. Cada meta permite editarse o eliminarse y muestra progreso, faltante, mes estimado de cumplimiento y cuánto necesitás aportar por mes para llegar a tiempo.
+- El monto “ya reunido” por meta se indica manualmente. **Las metas son independientes del saldo bancario y no reservan ni retiran dinero de las cuentas**. Esto impide la falsa impresión de que una misma suma se ha asignado automáticamente a varias metas.
+- La conversión es orientativa y usa la cotización actual: de ARS a USD se utiliza el **precio vendedor** y de USD a ARS el **comprador**, sin estimar una tasa de cambio futura. Si la cotización es antigua o no hay conexión se informa que no está disponible.
+- Se calculan aportes nominales sin intereses, inflación, rendimiento de depósitos, comisiones ni variaciones futuras del dólar.
+- Las metas y las preferencias de proyección se guardan dentro de la bóveda AES-GCM local que ya existe. No hay llamadas externas con los nombres, presupuestos ni importes de tus metas.
+- Se migran automáticamente las bóvedas anteriores sin perder movimientos, claves ni ahorros.
