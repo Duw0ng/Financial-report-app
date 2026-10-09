@@ -65,7 +65,7 @@ export function reconcileImportedFx(existing,imported){
       Math.abs(x.amount-t.amount)<=0.01&&x.fxLeg);
     if(!old)continue;
     used.add(old.id);removeIds.add(old.id);reconciled++;
-    for(const k of ['fxGroup','fxLeg','fxRate','fxMarket','fxQuotedAt'])t[k]=old[k];
+    for(const k of ['fxGroup','fxLeg','fxRate','fxMarket','fxQuotedAt','fxReferenceRate'])t[k]=old[k];
     t.internalTransfer=true;t.internalTransferReason='fx';
   }
   return {removeIds,reconciled};
