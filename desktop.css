@@ -12,12 +12,14 @@
   .quick-expense:hover{background:#41202b;border-color:#9f4760}
   .quick-income{background:#123326;border-color:#166534;color:#a7f3d0}
   .quick-income:hover{background:#17452f;border-color:#238a52}
+  .quick-saving{background:#17263d;border-color:#28466f;color:#bfdbfe}
+  .quick-saving:hover{background:#243855;border-color:#4579a7}
   .month-bar{position:sticky;top:76px;z-index:18;background:rgba(11,16,32,.9);backdrop-filter:blur(14px);border-bottom:1px solid rgba(39,51,75,.45);padding:10px 24px 12px;grid-template-columns:44px minmax(260px,340px) 44px}
   .app-main{width:min(1440px,100%);padding:20px 28px 80px;display:grid;grid-template-columns:minmax(320px,390px) minmax(0,1fr);gap:18px;align-items:start}
-  .summary-grid{grid-column:1/-1;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+  .summary-grid{grid-column:1/-1;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
   .summary-card{padding:18px 20px;min-height:92px}
   .summary-card strong{font-size:23px}
-  #internalTransferNote{grid-column:1/-1;margin:0 2px -3px}
+  #internalTransferNote,.ledger-controls,#baselineWarning,#savingsGoalProgress{grid-column:1/-1;margin:0}
   .app-main>.panel{margin-top:0}
   .app-main>.panel:has(#categoryChart){grid-column:1;position:sticky;top:145px;max-height:calc(100vh - 170px);overflow:auto}
   .app-main>.panel:has(#transactionsList){grid-column:2;min-width:0;min-height:620px}

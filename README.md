@@ -1,4 +1,4 @@
-# Finanzas Privadas v0.2 — PWA Android
+# Finanzas Privadas v0.3 — PWA Android y PC
 
 Aplicación local-first para importar estados de cuenta bancarios y llevar finanzas mensuales desde Android.
 
@@ -28,7 +28,12 @@ La app detecta automáticamente el banco al importar el PDF.
 - Categorías especiales para tarjeta y rendimientos.
 - Reglas aprendidas al corregir categorías.
 - Edición, agregado y borrado manual de movimientos.
-- Resumen mensual y gastos por categoría.
+- Resumen mensual, gastos por categoría y **saldo acumulado automáticamente al mes siguiente**.
+- Disponible, ahorros y patrimonio separados para ARS y USD.
+- Registro de depósitos a ahorros y retiros de ahorros sin inflar ingresos o gastos.
+- Configuración del saldo inicial al comenzar un mes base y meta de ahorro mensual.
+- Recalculo de meses futuros cuando editas un movimiento histórico.
+- Exportaciones Excel con saldos iniciales y cierres de cada mes.
 - Exportación CSV/XLSX.
 - Backup/restauración cifrados.
 - Bloqueo automático configurable.
@@ -46,3 +51,19 @@ Importante: `noindex` reduce la posibilidad de aparecer en buscadores, pero no e
 
 ## Dependencias externas
 PDF.js y SheetJS se descargan desde cdnjs al primer uso. Los PDFs nunca se envían al CDN; sólo se descarga el código JavaScript de las librerías. El service worker puede cachearlas después.
+
+## Migración desde v0.2
+La bóveda cifrada existente se abre sin borrarse. El saldo inicial comienza como **no confirmado**, por lo que se presenta una advertencia y los números de disponible son estimados hasta que completes los saldos reales en Ajustes → Saldo inicial y ahorros. El mes base define desde cuándo se suman movimientos: los anteriores quedan fuera del cálculo para no contabilizarlos dos veces (se te advierte de ello).
+
+El tipo **Ahorrar** reserva dinero: disminuye disponible, aumenta ahorros. **Retirar ahorros** hace lo contrario. No son ingresos ni gastos. Si una transferencia ya fue importada en un estado de cuenta, edita ese movimiento para marcarlo como ahorro y evita registrar un segundo movimiento manual. En transferencias entre cuentas propias de la misma moneda, ambas caras se excluyen; para compraventa de divisas marcada como interna se actualizan los saldos en cada moneda sin computarlas como consumo o ingreso.
+
+### Nota sobre saldos
+El disponible se calcula a partir de los movimientos que registra la app, no consulta el banco en tiempo real. Sin saldo inicial confirmado o si faltan movimientos, es una estimación. ARS y USD se muestran separados: no se suman monedas diferentes sin un tipo de cambio.
+
+### Pruebas recomendadas
+1. Hacer backup cifrado antes de cambiar de versión.
+2. Configurar saldo disponible y ahorros al comienzo del primer mes importado.
+3. Agregar depósito a ahorros, después un retiro; comprobar que no cambian ingresos/gastos ni patrimonio total.
+4. Cambiar un gasto del mes anterior y verificar el efecto en el saldo del mes siguiente.
+5. Importar un PDF ya cargado y verificar que no se dupliquen los movimientos.
+6. Abrir un mes sin movimientos y confirmar que arrastra el saldo anterior.
