@@ -110,6 +110,7 @@
           <strong id="fxEstimatedTotalValue">—</strong>
           <small>Solo una valoración; no convierte ni modifica los saldos.</small>
         </div>
+        <p id="fxMonthSummary" class="fx-month-summary tiny muted"></p>
         <button id="buyDollarBtn" type="button" class="primary">＋ Registrar compra de USD</button>
       </section>
       <section class="panel">
@@ -185,7 +186,7 @@
       <label>Pesos realmente pagados (ARS)<input id="fxPesos" type="number" step="0.01" min="0.01" inputmode="decimal" placeholder="Total cobrado por el banco" /></label>
       <p id="fxPreview" class="privacy-box" aria-live="polite"></p>
       <p id="fxHistoricalNote" class="tiny muted" hidden>Esta fecha es anterior a hoy: comprobá el cambio real de esa compra. El precio actual NO representa necesariamente el histórico.</p>
-      <p class="tiny muted">La compra no cuenta como gasto o ingreso: descuenta ARS y acredita USD. Si ya importaste el PDF, no vuelvas a duplicar la compra.</p>
+      <p class="tiny muted">La compra no cuenta como gasto o ingreso: descuenta ARS y acredita USD. Si ya importaste el PDF, el sistema intentará conciliar los movimientos existentes. La cotización pública puede diferir de la del banco.</p>
       <div class="dialog-actions split">
         <button id="deleteFxBtn" type="button" class="danger ghost" hidden>Eliminar compra</button>
         <button id="fxSaveBtn" type="button" class="primary">Registrar cambio</button>
