@@ -55,6 +55,7 @@
         <div class="desktop-quick-actions" style="display:none">
           <button id="addExpenseDesktopBtn" type="button" class="quick-add quick-expense" title="Agregar gasto manual">− Gasto</button>
           <button id="addIncomeDesktopBtn" type="button" class="quick-add quick-income" title="Agregar ingreso manual">＋ Ingreso</button>
+          <button id="addSavingDesktopBtn" type="button" class="quick-add quick-saving" title="Pasar dinero a ahorros">🏦 Ahorrar</button>
         </div>
         <button id="installBtn" class="icon-btn" hidden title="Instalar app">⬇</button>
         <button id="lockBtn" class="icon-btn" title="Bloquear">🔒</button>
@@ -68,22 +69,25 @@
     </nav>
 
     <main class="app-main">
-      <section class="summary-grid">
-        <article class="summary-card">
-          <span>Ingresos ARS</span><strong id="incomeARS">$0</strong>
-        </article>
-        <article class="summary-card">
-          <span>Gastos ARS</span><strong id="expenseARS">$0</strong>
-        </article>
-        <article class="summary-card accent">
-          <span>Balance ARS</span><strong id="balanceARS">$0</strong>
-        </article>
-        <article class="summary-card">
-          <span>Balance de movimientos USD</span><strong id="usdSummary">U$S 0</strong>
-        </article>
+      <section class="summary-grid" aria-label="Balance mensual y ahorros">
+        <article class="summary-card"><span>Saldo inicial ARS</span><strong id="openingARS">$0</strong></article>
+        <article class="summary-card"><span>Ingresos ARS</span><strong id="incomeARS">$0</strong></article>
+        <article class="summary-card"><span>Gastos ARS</span><strong id="expenseARS">$0</strong></article>
+        <article class="summary-card"><span>Ahorro neto del mes ARS</span><strong id="monthSavingsARS">$0</strong></article>
+        <article class="summary-card accent"><span>Disponible al cierre ARS</span><strong id="balanceARS">$0</strong></article>
+        <article class="summary-card saving-card"><span>Ahorros acumulados ARS</span><strong id="savingsARS">$0</strong></article>
+        <article class="summary-card"><span>Total ARS (disponible + ahorros)</span><strong id="totalARS">$0</strong></article>
+        <article class="summary-card"><span>Disponible al cierre USD</span><strong id="availableUSD">U$S 0</strong></article>
+        <article class="summary-card saving-card"><span>Ahorros acumulados USD</span><strong id="savingsUSD">U$S 0</strong></article>
+        <article class="summary-card"><span>Total USD (disponible + ahorros)</span><strong id="totalUSD">U$S 0</strong></article>
       </section>
+      <div id="baselineWarning" class="ledger-warning" role="status" hidden></div>
+      <p id="monthMovementDetails" class="muted small ledger-details"></p>
       <p id="internalTransferNote" class="tiny muted" aria-live="polite"></p>
-
+      <div id="savingsGoalProgress" class="savings-progress" hidden>
+        <div class="savings-progress-head"><strong>Meta de ahorro mensual</strong><span id="savingsGoalText"></span></div>
+        <div class="savings-progress-track"><div id="savingsGoalBar"></div></div>
+      </div>
       <section class="panel">
         <div class="panel-head">
           <div><h2>Gastos por categoría</h2><p class="muted small">Solo débitos del mes seleccionado.</p></div>
@@ -115,6 +119,7 @@
     <nav class="bottom-nav">
       <button data-tab="home" class="active">⌂<span>Inicio</span></button>
       <button data-tab="add">＋<span>Agregar</span></button>
+      <button data-tab="savings">🏦<span>Ahorros</span></button>
       <button data-tab="settings">⚙<span>Ajustes</span></button>
     </nav>
   </div>
@@ -145,7 +150,7 @@
       <label>Nombre corto / comercio<input id="editMerchant" type="text" placeholder="Ej. Supermercado" /></label>
       <label>Categoría<select id="editCategory"></select></label>
       <div class="two-col">
-        <label>Tipo<select id="editType"><option value="debit">Gasto</option><option value="credit">Ingreso</option></select></label>
+        <label>Tipo<select id="editType"><option value="debit">Gasto</option><option value="credit">Ingreso</option><option value="save">Ahorrar (reservar)</option><option value="unsave">Retirar ahorros</option></select></label>
         <label>Moneda<select id="editCurrency"><option value="ARS">ARS</option><option value="USD">USD</option></select></label>
       </div>
       <label>Importe<input id="editAmount" type="number" inputmode="decimal" step="0.01" min="0" /></label>
@@ -173,6 +178,19 @@
           <option value="0">Solo manual</option>
         </select>
       </label>
+      <hr />
+      <h3>Saldo inicial y ahorros</h3>
+      <p class="tiny muted">Indicá el dinero que tenías al comenzar el mes base. El cierre de cada mes pasa automáticamente al siguiente. Si tu historial comienza a mitad de mes, usá el saldo que había al comenzar ese mes.</p>
+      <label>Mes base<input id="openingMonth" type="month" /></label>
+      <div class="two-col">
+        <label>Disponible ARS inicial<input id="openingAvailableARS" type="number" step="0.01" value="0" /></label>
+        <label>Ahorros ARS iniciales<input id="openingSavingsARS" type="number" step="0.01" min="0" value="0" /></label>
+        <label>Disponible USD inicial<input id="openingAvailableUSD" type="number" step="0.01" value="0" /></label>
+        <label>Ahorros USD iniciales<input id="openingSavingsUSD" type="number" step="0.01" min="0" value="0" /></label>
+      </div>
+      <label>Meta mensual de ahorro ARS (opcional)<input id="savingsGoalARS" type="number" step="0.01" min="0" value="0" /></label>
+      <button id="saveOpeningBtn" type="button" class="primary full">Guardar saldos y meta</button>
+      <p class="tiny muted">Una transferencia a ahorros disminuye el disponible y aumenta los ahorros, sin considerarse un gasto. Si aparece en un PDF, editá ese movimiento en vez de duplicarlo manualmente.</p>
       <hr />
       <h3>Exportar</h3>
       <button id="exportExcelBtn" type="button" class="full">Exportar Excel (.xlsx)</button>
