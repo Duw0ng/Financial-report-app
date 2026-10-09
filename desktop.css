@@ -55,3 +55,9 @@
   .quick-dollar{background:#183049;color:#bfdbfe;border-color:#2b5477}
   .quick-dollar:hover{background:#214161}
 }
+
+@media(min-width:1000px){
+  .quick-settings{background:#1b263a;border-color:#314158;color:#cbd5e1}
+  .quick-settings:hover{background:#26374d;border-color:#5a718e}
+  #balanceSourceNote{grid-column:1/-1;margin:0 2px;color:var(--muted)}
+}

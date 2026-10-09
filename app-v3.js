@@ -2,6 +2,7 @@ import {dbGet,dbSet,dbDelete} from './db.js';
 import {encryptJson,decryptJson} from './crypto.js';
 import {parseBankPdf} from './parser.js';
 import {buildMonthlyLedger,shiftMonth,validMonth} from './ledger.js';
+import {inferOpeningFromBankStatements} from './bank-balances.js';
 import {fetchDollarQuote,isFreshQuote,pesoCost,createDollarPurchase,reconcileImportedFx} from './exchange.js';
 
 const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(s)];
@@ -26,7 +27,15 @@ function migrateState(){
   }
 }
 function localDate(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-function monthlyLedger(){return buildMonthlyLedger(state.transactions,state.openingBalances,shiftMonth(monthKey(localDate())))}
+function resolvedOpening(){
+  if(state.openingBalances?.confirmed)return {opening:state.openingBalances,mode:'manual',reason:''};
+  const auto=inferOpeningFromBankStatements(state.transactions);
+  if(auto.reliable)return {opening:auto.opening,mode:'pdf',reason:auto.reason};
+  return {opening:state.openingBalances||defaultOpening(),mode:'estimated',reason:auto.reason};
+}
+function monthlyLedger(){
+  return buildMonthlyLedger(state.transactions,resolvedOpening().opening,shiftMonth(monthKey(localDate())));
+}
 function toast(msg,error=false){const t=$('#toast');t.textContent=msg;t.className='toast show'+(error?' error':'');clearTimeout(t._timer);t._timer=setTimeout(()=>t.className='toast',2800)}
 function formatMoney(n,c='ARS'){return new Intl.NumberFormat('es-AR',{style:'currency',currency:c,minimumFractionDigits:c==='ARS'?0:2,maximumFractionDigits:2}).format(n||0).replace('US$','U$S')}
 function monthKey(date){return String(date||'').slice(0,7)}
@@ -95,11 +104,18 @@ function render(){
   const internal=month.filter(t=>t.internalTransfer&&!t.savingsAction).length;
   const note=$('#internalTransferNote');
   if(note)note.textContent=internal?`${internal} movimiento(s) internos excluidos de ingresos/gastos; las compras de divisas sí ajustan la disponibilidad por moneda.`:'';
-  const warning=$('#baselineWarning');
-  warning.hidden=ledger.confirmed&&!ledger.ignoredBeforeStart;
-  warning.textContent=!ledger.confirmed
-    ? 'Saldo estimado desde $0: configurá el saldo inicial en Ajustes para conocer tu dinero real disponible.'
-    : `${ledger.ignoredBeforeStart} movimiento(s) anteriores al mes base excluidos. Revisá el mes base en Ajustes.`;
+  const baseline=resolvedOpening(),warning=$('#baselineWarning');
+  const details=$('#balanceSourceNote');
+  const label=baseline.mode==='manual'?'Saldo inicial configurado manualmente':
+    baseline.mode==='pdf'?'Saldo inicial reconstruido desde los PDF bancarios':'Saldo calculado con los movimientos disponibles';
+  details.textContent=label+(baseline.mode==='pdf'?' · No es una conexión en tiempo real con el banco.':'');
+  const needsReview=!!ledger.ignoredBeforeStart;
+  warning.hidden=!needsReview;
+  warning.textContent=needsReview
+    ?`${ledger.ignoredBeforeStart} movimiento(s) anteriores al mes base no se contabilizan. Revisá Ajustes.`:'';
+  details.title=baseline.mode==='estimated'
+    ?`Saldo orientativo. ${baseline.reason} Podés configurar un saldo inicial en Ajustes si querés mayor precisión.`
+    :baseline.reason||'';
   const goal=Math.max(0,Number(state.settings.savingsGoalARS)||0);
   const net=r.saved.ARS-r.withdrawn.ARS;
   const progress=$('#savingsGoalProgress');
@@ -253,7 +269,9 @@ async function saveFxPurchase(){
     rate=Number($('#fxRate').value),market=$('#fxMarket').value,
     group=$('#fxEditGroup').value;
   const pair=group?state.transactions.filter(t=>t.fxGroup===group&&t.source==='Manual FX'):[];
-  if(!state.openingBalances?.confirmed)return toast('Primero confirmá tu saldo inicial en Ajustes para evitar descuadres.',true);
+  if(resolvedOpening().mode==='estimated'&&!group){
+    if(!confirm('El saldo disponible es estimado porque faltan saldos bancarios verificables. La compra se registrará correctamente, pero el disponible total podría no coincidir con el banco. ¿Continuar?'))return;
+  }
   const book=monthlyLedger(),start=book.startMonth;
   if(date.slice(0,7)<start)return toast('La compra está fuera del mes base configurado.',true);
   if(!(Number.isFinite(usd)&&usd>0&&Number.isFinite(pesos)&&pesos>0&&Number.isFinite(rate)&&rate>0))
@@ -402,7 +420,13 @@ async function confirmRestore(){if(!restoreBlob)return;try{await decryptJson(res
 async function wipe(){if(!confirm('Esto borrará toda la bóveda de este dispositivo. ¿Continuar?'))return;if(!confirm('Última confirmación: esta acción no se puede deshacer sin un backup.'))return;await dbDelete(VAULT_KEY);location.reload()}
 async function addCategory(){const c=$('#newCategoryInput').value.trim();if(!c)return;if(!state.categories.includes(c)){state.categories.push(c);await save();renderCategories()}$('#newCategoryInput').value=''}
 function renderOpeningSettings(){
-  const b=state.openingBalances||defaultOpening();
+  const auto=resolvedOpening(),b=state.openingBalances?.confirmed?state.openingBalances:auto.opening;
+  $('#openingStatus').textContent=auto.mode==='pdf'
+    ?'El saldo inicial se reconstruye automáticamente desde tus PDF. No necesitás configurarlo, salvo que quieras corregirlo.'
+    :auto.mode==='manual'
+      ?'Estás usando un saldo inicial manual. Se aplicará hasta que elijas volver al cálculo automático.'
+      :'No se pudo determinar una apertura exacta con los PDF actuales. Podés dejar el saldo como estimado o configurarlo manualmente.';
+  $('#resetOpeningBtn').hidden=!state.openingBalances?.confirmed;
   const months=state.transactions.map(t=>monthKey(t.date)).filter(Boolean).sort();
   $('#openingMonth').value=b.startMonth||months[0]||monthKey(localDate());
   for(const c of ['ARS','USD']){
@@ -425,6 +449,14 @@ async function saveOpeningSettings(){
   state.openingBalances=b;state.settings.savingsGoalARS=goal;
   await save();renderMonthOptions();render();toast('Saldo inicial y meta de ahorro guardados.');
 }
+async function useAutomaticOpening(){
+  state.openingBalances=defaultOpening();
+  await save();renderMonthOptions();render();renderOpeningSettings();
+  toast('Cálculo automático activado. No se borró ningún movimiento.');
+}
+function openSettings(){
+  renderOpeningSettings();$('#settingsDialog').showModal();renderCategories();
+}
 function bind(){
   $('#createVaultBtn').onclick=createVault;$('#unlockBtn').onclick=unlock;
   $('#unlockPassword').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});$('#lockBtn').onclick=lock;
@@ -432,6 +464,7 @@ function bind(){
   $('#addExpenseDesktopBtn')?.addEventListener('click',()=>addTransaction('debit'));
   $('#addIncomeDesktopBtn')?.addEventListener('click',()=>addTransaction('credit'));
   $('#addSavingDesktopBtn')?.addEventListener('click',()=>addTransaction('save'));
+  $('#settingsDesktopBtn')?.addEventListener('click',openSettings);
   $('#addSavingBtn')?.addEventListener('click',()=>addTransaction('save'));
   $('#buyDollarBtn')?.addEventListener('click',()=>openFxDialog());
   $('#buyDollarDesktopBtn')?.addEventListener('click',()=>openFxDialog());
@@ -460,7 +493,7 @@ function bind(){
   $$('[data-tab]').forEach(b=>b.onclick=()=>{
     if(b.dataset.tab==='add')addTransaction('debit');
     if(b.dataset.tab==='savings')addTransaction('save');
-    if(b.dataset.tab==='settings'){renderOpeningSettings();$('#settingsDialog').showModal();renderCategories()}
+    if(b.dataset.tab==='settings')openSettings()
   });
   $('#editType').onchange=e=>{if(['save','unsave'].includes(e.target.value)){$('#editCategory').value='Ahorros';$('#learnRule').checked=false}};
   $('#saveTxBtn').onclick=saveTransaction;$('#deleteTxBtn').onclick=deleteTransaction;
@@ -470,6 +503,7 @@ function bind(){
   $('#backupInput').onchange=e=>handleBackupFile(e.target.files[0]);$('#confirmRestoreBtn').onclick=confirmRestore;
   $('#wipeBtn').onclick=wipe;$('#addCategoryBtn').onclick=addCategory;
   $('#saveOpeningBtn').onclick=saveOpeningSettings;
+  $('#resetOpeningBtn').onclick=useAutomaticOpening;
   $('#autoLockSelect').onchange=async e=>{state.settings.autoLock=Number(e.target.value);await save();setupAutoLock();toast('Bloqueo automático actualizado.')};
   ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,resetActivity,{passive:true}));
   document.addEventListener('keydown',e=>{

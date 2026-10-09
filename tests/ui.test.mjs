@@ -16,7 +16,10 @@ test('la app usa cambio real y no cachea cotización externa',()=>{
   const sw=read('sw.js'),loader=read('app-loader.js'),app=read('app-v3.js'),exchange=read('exchange.js');
   assert.ok(sw.includes("url.hostname==='dolarapi.com'"));
   assert.ok(sw.includes("'./exchange.js'"));
-  assert.ok(loader.includes('app-v3.js?v=8'));
+  assert.ok(sw.includes("'./bank-balances.js'"));
+  assert.ok(read('index.html').includes('id="settingsDesktopBtn"'));
+  assert.ok(read('app-v3.js').includes('inferOpeningFromBankStatements'));
+  assert.ok(loader.includes('app-v3.js?v=9'));
   assert.ok(app.includes('createDollarPurchase({date,usd,pesos,rate:pesos/usd'));
   assert.ok(exchange.includes("'https://dolarapi.com/v1/dolares/oficial'"));
 });

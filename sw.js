@@ -1,5 +1,5 @@
-const CACHE='finanzas-privadas-v8';
-const SHELL=['./','./index.html','./styles.css','./desktop.css','./app-loader.js','./app-v3.js','./ledger.js','./exchange.js','./crypto.js','./db.js','./parser.js','./manifest.webmanifest','./robots.txt','./icons/icon.svg'];
+const CACHE='finanzas-privadas-v9';
+const SHELL=['./','./index.html','./styles.css','./desktop.css','./app-loader.js','./app-v3.js','./ledger.js','./exchange.js','./bank-balances.js','./crypto.js','./db.js','./parser.js','./manifest.webmanifest','./robots.txt','./icons/icon.svg'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
