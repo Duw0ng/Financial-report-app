@@ -191,6 +191,10 @@ function renderFxQuote(row){
     :'Sin cotización disponible (actualizá o ingresá el valor manualmente).';
   $('#fxQuoteStatus').classList.toggle('stale',!good);
   const visible=row?.month===monthKey(localDate())&&good;
+  const fxOut=row?.exchangeOut.ARS||0,fxIn=row?.exchangeIn.USD||0;
+  $('#fxMonthSummary').textContent=fxOut||fxIn
+    ?`Cambios del mes: −${formatMoney(fxOut)} ARS / +${formatMoney(fxIn,'USD')} USD`
+    :'Sin compras de dólares registradas este mes.';
   $('#fxEstimatedTotal').hidden=!visible;
   if(visible){
     $('#fxEstimatedTotalValue').textContent=formatMoney(row.total.ARS+row.total.USD*q.compra);
