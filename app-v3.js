@@ -3,6 +3,7 @@ import {encryptJson,decryptJson} from './crypto.js';
 import {parseBankPdf} from './parser.js';
 import {buildMonthlyLedger,shiftMonth,validMonth} from './ledger.js';
 import {inferOpeningFromBankStatements} from './bank-balances.js';
+import {setupPlanning,renderPlanning} from './planning-ui.js';
 import {fetchDollarQuote,isFreshQuote,pesoCost,createDollarPurchase,reconcileImportedFx} from './exchange.js';
 
 const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(s)];
@@ -13,10 +14,10 @@ let state=null,password=null,pendingImport=null,deferredInstall=null,restoreBlob
 let fxQuote=null,fxRateTimer=null,fxUserRate=false,fxPaidManual=false,fxFetchSeq=0;
 
 function defaultOpening(){return {confirmed:false,startMonth:monthKey(localDate()),available:{ARS:0,USD:0},savings:{ARS:0,USD:0}}}
-function emptyState(){return {version:3,transactions:[],categories:[...defaultCategories],rules:[],settings:{autoLock:10,savingsGoalARS:0,fxMarket:'oficial'},openingBalances:defaultOpening(),createdAt:new Date().toISOString()}}
+function emptyState(){return {version:4,transactions:[],goals:[],categories:[...defaultCategories],rules:[],settings:{autoLock:10,savingsGoalARS:0,fxMarket:'oficial'},openingBalances:defaultOpening(),createdAt:new Date().toISOString()}}
 function migrateState(){
   if(!state)return;
-  state.version=3;state.transactions??=[];state.categories??=[];state.rules??=[];
+  state.version=4;state.transactions??=[];state.goals??=[];state.categories??=[];state.rules??=[];
   state.settings??={autoLock:10};state.settings.savingsGoalARS??=0;state.settings.fxMarket??='oficial';
   state.openingBalances??=defaultOpening();
   for(const c of defaultCategories)if(!state.categories.includes(c))state.categories.push(c);
@@ -211,6 +212,7 @@ function renderFxQuote(row){
   $('#fxMonthSummary').textContent=fxOut||fxIn
     ?`Cambios del mes: −${formatMoney(fxOut)} ARS / +${formatMoney(fxIn,'USD')} USD`
     :'Sin compras de dólares registradas este mes.';
+  renderPlanning();
   $('#fxEstimatedTotal').hidden=!visible;
   if(visible){
     $('#fxEstimatedTotalValue').textContent=formatMoney(row.total.ARS+row.total.USD*q.compra);
@@ -467,6 +469,8 @@ function openSettings(){
   renderOpeningSettings();$('#settingsDialog').showModal();renderCategories();
 }
 function bind(){
+  setupPlanning({getState:()=>state,save,toast,money:formatMoney,getQuote:()=>fxQuote,
+    currentRow:()=>monthlyLedger().rows.find(r=>r.month===monthKey(localDate()))});
   $('#createVaultBtn').onclick=createVault;$('#unlockBtn').onclick=unlock;
   $('#unlockPassword').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});$('#lockBtn').onclick=lock;
   $('#fabImport').onclick=choosePdf;$('#pdfInput').onchange=e=>handlePdf(e.target.files[0]);$('#confirmImportBtn').onclick=confirmImport;
