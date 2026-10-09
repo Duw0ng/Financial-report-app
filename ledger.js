@@ -61,7 +61,7 @@ export function buildMonthlyLedger(transactions = [], opening = {}, throughMonth
       } else if (t.savingsAction === 'withdraw') {
         available[c] += n; savings[c] -= n; r.withdrawn[c] += n;
       } else if (t.internalTransfer) {
-        if (FX_DESCRIPTION.test(t.description || '')) {
+        if (t.fxLeg || FX_DESCRIPTION.test(t.description || '')) {
           if (t.type === 'debit') { available[c] -= n; r.exchangeOut[c] += n; }
           if (t.type === 'credit') { available[c] += n; r.exchangeIn[c] += n; }
         }

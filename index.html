@@ -56,6 +56,7 @@
           <button id="addExpenseDesktopBtn" type="button" class="quick-add quick-expense" title="Agregar gasto manual">− Gasto</button>
           <button id="addIncomeDesktopBtn" type="button" class="quick-add quick-income" title="Agregar ingreso manual">＋ Ingreso</button>
           <button id="addSavingDesktopBtn" type="button" class="quick-add quick-saving" title="Pasar dinero a ahorros">🏦 Ahorrar</button>
+          <button id="buyDollarDesktopBtn" type="button" class="quick-add quick-dollar" title="Registrar compra de dólares">💱 Comprar USD</button>
         </div>
         <button id="installBtn" class="icon-btn" hidden title="Instalar app">⬇</button>
         <button id="lockBtn" class="icon-btn" title="Bloquear">🔒</button>
@@ -88,6 +89,30 @@
         <div class="savings-progress-head"><strong>Meta de ahorro mensual</strong><span id="savingsGoalText"></span></div>
         <div class="savings-progress-track"><div id="savingsGoalBar"></div></div>
       </div>
+
+      <section class="fx-panel" aria-label="Dólar y cambios entre pesos y dólares">
+        <div class="fx-panel-head">
+          <div><h2>Cotización del dólar</h2><p class="muted small">Referencia actualizada de DolarAPI · ARS por 1 USD</p></div>
+          <button id="refreshFxBtn" type="button" class="ghost" title="Actualizar cotización">↻ Actualizar</button>
+        </div>
+        <div class="fx-quotes">
+          <div><span>Compra de USD · precio de venta</span><strong id="fxBuyPrice">—</strong></div>
+          <div><span>Venta de USD · precio de compra</span><strong id="fxSellPrice">—</strong></div>
+        </div>
+        <div class="fx-market-line">
+          <label class="fx-market-picker">Cotización
+            <select id="fxDisplayMarket" aria-label="Mercado de cotización"><option value="oficial">Oficial</option><option value="bolsa">MEP / Bolsa</option><option value="blue">Blue</option></select>
+          </label>
+          <p class="tiny muted">Mercado: <strong id="fxMarketLabel">Oficial</strong> · <span id="fxQuoteStatus" aria-live="polite">Esperando cotización…</span></p>
+        </div>
+        <div id="fxEstimatedTotal" class="fx-valuation" hidden>
+          <span>Patrimonio estimado en pesos a cotización de compra actual</span>
+          <strong id="fxEstimatedTotalValue">—</strong>
+          <small>Solo una valoración; no convierte ni modifica los saldos.</small>
+        </div>
+        <p id="fxMonthSummary" class="fx-month-summary tiny muted"></p>
+        <button id="buyDollarBtn" type="button" class="primary">＋ Registrar compra de USD</button>
+      </section>
       <section class="panel">
         <div class="panel-head">
           <div><h2>Gastos por categoría</h2><p class="muted small">Solo débitos del mes seleccionado.</p></div>
@@ -137,6 +162,34 @@
       <div id="importPreview"></div>
       <div class="dialog-actions">
         <button id="confirmImportBtn" type="button" class="primary" disabled>Guardar movimientos</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="fxDialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-head"><h2 id="fxDialogTitle">Registrar compra de dólares</h2><button value="cancel" class="icon-btn">✕</button></div>
+      <input id="fxEditGroup" type="hidden" />
+      <label>Fecha de la operación<input id="fxDate" type="date" /></label>
+      <label>Mercado de referencia
+        <select id="fxMarket">
+          <option value="oficial">Dólar oficial</option>
+          <option value="bolsa">Dólar MEP / Bolsa</option>
+          <option value="blue">Dólar blue</option>
+          <option value="manual">Valor manual (mi banco)</option>
+        </select>
+      </label>
+      <div class="two-col">
+        <label>Dólares comprados (USD)<input id="fxUsd" type="number" step="0.01" min="0.01" inputmode="decimal" placeholder="Ej. 100" /></label>
+        <label>Tipo de cambio ARS/USD<input id="fxRate" type="number" step="0.0001" min="0.0001" inputmode="decimal" placeholder="Precio por 1 USD" /></label>
+      </div>
+      <label>Pesos realmente pagados (ARS)<input id="fxPesos" type="number" step="0.01" min="0.01" inputmode="decimal" placeholder="Total cobrado por el banco" /></label>
+      <p id="fxPreview" class="privacy-box" aria-live="polite"></p>
+      <p id="fxHistoricalNote" class="tiny muted" hidden>Esta fecha es anterior a hoy: comprobá el cambio real de esa compra. El precio actual NO representa necesariamente el histórico.</p>
+      <p class="tiny muted">La compra no cuenta como gasto o ingreso: descuenta ARS y acredita USD. Si ya importaste el PDF, el sistema intentará conciliar los movimientos existentes. La cotización pública puede diferir de la del banco.</p>
+      <div class="dialog-actions split">
+        <button id="deleteFxBtn" type="button" class="danger ghost" hidden>Eliminar compra</button>
+        <button id="fxSaveBtn" type="button" class="primary">Registrar cambio</button>
       </div>
     </form>
   </dialog>

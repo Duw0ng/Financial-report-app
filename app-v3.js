@@ -2,24 +2,27 @@ import {dbGet,dbSet,dbDelete} from './db.js';
 import {encryptJson,decryptJson} from './crypto.js';
 import {parseBankPdf} from './parser.js';
 import {buildMonthlyLedger,shiftMonth,validMonth} from './ledger.js';
+import {fetchDollarQuote,isFreshQuote,pesoCost,createDollarPurchase,reconcileImportedFx} from './exchange.js';
 
 const $=s=>document.querySelector(s); const $$=s=>[...document.querySelectorAll(s)];
 const VAULT_KEY='vault';
 const defaultCategories=['Supermercado','Comida','Transporte','Servicios','Suscripciones','Tarjeta','Compras','Transferencias','Impuestos','Rendimientos','Salud','Educación','Entretenimiento','Ingresos','Ahorros','Otros'];
 const icons={Supermercado:'🛒',Comida:'🍔',Transporte:'🚗',Servicios:'💡',Suscripciones:'🔁',Tarjeta:'💳',Compras:'🛍️',Transferencias:'↔️',Impuestos:'🏛️',Rendimientos:'📈',Salud:'♥',Educación:'📚',Entretenimiento:'🎮',Ingresos:'＋',Ahorros:'🏦',Otros:'•'};
 let state=null,password=null,pendingImport=null,deferredInstall=null,restoreBlob=null,lastActivity=Date.now(),autoLockTimer=null;
+let fxQuote=null,fxRateTimer=null,fxUserRate=false,fxPaidManual=false,fxFetchSeq=0;
 
 function defaultOpening(){return {confirmed:false,startMonth:monthKey(localDate()),available:{ARS:0,USD:0},savings:{ARS:0,USD:0}}}
-function emptyState(){return {version:3,transactions:[],categories:[...defaultCategories],rules:[],settings:{autoLock:10,savingsGoalARS:0},openingBalances:defaultOpening(),createdAt:new Date().toISOString()}}
+function emptyState(){return {version:3,transactions:[],categories:[...defaultCategories],rules:[],settings:{autoLock:10,savingsGoalARS:0,fxMarket:'oficial'},openingBalances:defaultOpening(),createdAt:new Date().toISOString()}}
 function migrateState(){
   if(!state)return;
   state.version=3;state.transactions??=[];state.categories??=[];state.rules??=[];
-  state.settings??={autoLock:10};state.settings.savingsGoalARS??=0;
+  state.settings??={autoLock:10};state.settings.savingsGoalARS??=0;state.settings.fxMarket??='oficial';
   state.openingBalances??=defaultOpening();
   for(const c of defaultCategories)if(!state.categories.includes(c))state.categories.push(c);
   for(const t of state.transactions){
     t.source??='Importado';t.internalTransfer??=false;t.internalTransferReason??='';
     t.savingsAction??=null;
+    t.fxGroup??=null;t.fxLeg??=null;
   }
 }
 function localDate(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
@@ -57,13 +60,13 @@ async function save(){
   });
   return saveQueue;
 }
-async function lock(){state=null;password=null;pendingImport=null;$('#app').hidden=true;$('#lockScreen').hidden=false;$('#unlockBox').hidden=false;$('#firstRunBox').hidden=true;$('#unlockPassword').value='';clearInterval(autoLockTimer)}
+async function lock(){clearInterval(fxRateTimer);fxRateTimer=null;fxQuote=null;fxFetchSeq++;state=null;password=null;pendingImport=null;$('#app').hidden=true;$('#lockScreen').hidden=false;$('#unlockBox').hidden=false;$('#firstRunBox').hidden=true;$('#unlockPassword').value='';clearInterval(autoLockTimer)}
 function resetActivity(){lastActivity=Date.now()}
 function setupAutoLock(){clearInterval(autoLockTimer);if(!state?.settings.autoLock)return;autoLockTimer=setInterval(()=>{if(Date.now()-lastActivity>state.settings.autoLock*60_000)lock()},15000)}
 async function init(){const v=await dbGet(VAULT_KEY);$('#firstRunBox').hidden=!!v;$('#unlockBox').hidden=!v;bind();if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});}
 async function createVault(){const a=$('#newPassword').value,b=$('#newPassword2').value;if(a.length<6)return toast('Usa al menos 6 caracteres.',true);if(a!==b)return toast('Las claves no coinciden.',true);state=emptyState();password=a;await dbSet(VAULT_KEY,await encryptJson(state,password));openApp();toast('Bóveda creada.');}
 async function unlock(){const p=$('#unlockPassword').value;try{const v=await dbGet(VAULT_KEY);state=await decryptJson(v,p);password=p;migrateState();reconcileInternalTransfers();openApp()}catch{toast('Clave incorrecta o bóveda dañada.',true)}}
-function openApp(){lastActivity=Date.now();$('#lockScreen').hidden=true;$('#app').hidden=false;renderCategories();renderMonthOptions();render();setupAutoLock()}
+function openApp(){lastActivity=Date.now();$('#lockScreen').hidden=true;$('#app').hidden=false;renderCategories();renderMonthOptions();render();setupAutoLock();refreshDollarQuote();clearInterval(fxRateTimer);fxRateTimer=setInterval(()=>{if(state)refreshDollarQuote()},10*60*1000)}
 function allMonths(){return monthlyLedger().rows.map(r=>r.month).reverse()}
 function renderMonthOptions(keep=true){
   const sel=$('#monthSelect'),old=keep?sel.value:'',current=monthKey(localDate());
@@ -107,7 +110,7 @@ function render(){
   }
   $('#monthMovementDetails').textContent=
     `Ahorros: +${formatMoney(r.saved.ARS)} / retiros: −${formatMoney(r.withdrawn.ARS)} · Balance ARS sin depósitos/retiros: ${formatMoney(r.income.ARS-r.expense.ARS)}`;
-  renderBars(month);renderTransactions();
+  renderFxQuote(r);renderBars(month);renderTransactions();
 }
 function renderBars(month){const map={};for(const t of month.filter(t=>t.type==='debit'&&t.currency==='ARS'&&!t.internalTransfer&&!t.savingsAction))map[t.category]=(map[t.category]||0)+t.amount;const arr=Object.entries(map).sort((a,b)=>b[1]-a[1]);const box=$('#categoryChart');if(!arr.length){box.innerHTML='<div class="empty">Aún no hay gastos ARS en este mes.</div>';return}const max=arr[0][1];box.innerHTML=arr.slice(0,10).map(([c,v])=>`<div class="bar-row"><span>${icons[c]||'•'} ${escapeHtml(c)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(3,v/max*100)}%"></div></div><span class="bar-value">${formatMoney(v,'ARS')}</span></div>`).join('')}
 function renderTransactions(){
@@ -117,9 +120,10 @@ function renderTransactions(){
   if(!arr.length){box.innerHTML='<div class="empty">No hay movimientos para mostrar.</div>';return}
   box.innerHTML=arr.map(t=>{
     const saving=t.savingsAction==='deposit'?'Ahorro':t.savingsAction==='withdraw'?'Retiro de ahorro':'';
+    const fx=t.fxGroup?' · cambio USD/ARS':'';
     const label=saving||t.category;
     const amountLabel=t.savingsAction==='deposit'?'↗':t.savingsAction==='withdraw'?'↙':t.type==='credit'?'+':'−';
-    return `<button class="tx" data-id="${escapeHtml(t.id)}"><span class="tx-icon">${saving?'🏦':icons[t.category]||'•'}</span><span class="tx-main"><span class="tx-title">${escapeHtml(t.merchant||t.description)}</span><span class="tx-meta">${escapeHtml(t.date.split('-').reverse().join('/'))} · ${escapeHtml(label)} · ${escapeHtml(t.source||'')}${t.internalTransfer?' · transferencia interna':''}${t.ref?` · #${escapeHtml(t.ref)}`:''}</span></span><span class="tx-amount ${t.savingsAction?'saving':t.type}">${amountLabel}${formatMoney(t.amount,t.currency)}</span></button>`;
+    return `<button class="tx" data-id="${escapeHtml(t.id)}"><span class="tx-icon">${saving?'🏦':icons[t.category]||'•'}</span><span class="tx-main"><span class="tx-title">${escapeHtml(t.merchant||t.description)}</span><span class="tx-meta">${escapeHtml(t.date.split('-').reverse().join('/'))} · ${escapeHtml(label)}${fx} · ${escapeHtml(t.source||'')}${t.internalTransfer?' · transferencia interna':''}${t.ref?` · #${escapeHtml(t.ref)}`:''}</span></span><span class="tx-amount ${t.savingsAction?'saving':t.type}">${amountLabel}${formatMoney(t.amount,t.currency)}</span></button>`;
   }).join('');
   $$('.tx').forEach(b=>b.onclick=()=>editTransaction(b.dataset.id));
 }
@@ -153,9 +157,162 @@ function reconcileInternalTransfers(){
 async function choosePdf(){pendingImport=null;$('#pdfInput').value='';$('#pdfInput').click()}
 async function handlePdf(file){if(!file)return;$('#importDialog').showModal();$('#confirmImportBtn').disabled=true;$('#importPreview').innerHTML='';$('#importProgress').textContent='Preparando lector PDF…';try{const parsed=await parseBankPdf(file,msg=>$('#importProgress').textContent=msg);let dup=0;for(const t of parsed.transactions){t.category=guessCategory(t.description,t.type);t.merchant=merchantFromDescription(t.description);t.id=await hashText(`${t.date}|${t.ref}|${t.description}|${t.type}|${t.currency}|${t.amount}|${t.balance}`);if(state.transactions.some(x=>x.id===t.id))dup++}pendingImport={...parsed,transactions:parsed.transactions.filter(t=>!state.transactions.some(x=>x.id===t.id))};$('#importProgress').innerHTML=`<strong>${escapeHtml(parsed.bank)}</strong> · detectados <strong>${parsed.transactions.length}</strong> movimientos en ${parsed.pages} página(s). ${dup?`<strong>${dup}</strong> ya existían y se omitirán.`:'No se detectaron duplicados.'}`;renderImportPreview();$('#confirmImportBtn').disabled=!pendingImport.transactions.length}catch(e){console.error(e);$('#importProgress').textContent=e?.message||'No pude leer este PDF. Actualmente se admiten estados de cuenta Brubank y Naranja X con texto seleccionable.';toast('Error al procesar el PDF.',true)}}
 function renderImportPreview(){const arr=pendingImport?.transactions||[];$('#importPreview').innerHTML=arr.length?`<div style="overflow:auto"><table class="import-table"><thead><tr><th>Fecha</th><th>Cuenta</th><th>Descripción</th><th>Cat.</th><th>Importe</th></tr></thead><tbody>${arr.slice(0,50).map(t=>`<tr><td>${t.date}</td><td>${escapeHtml(t.source)}</td><td>${escapeHtml(t.description)}</td><td>${escapeHtml(t.category)}</td><td>${t.type==='credit'?'+':'−'}${formatMoney(t.amount,t.currency)}${t.internalTransfer?' ↔':''}</td></tr>`).join('')}</tbody></table></div>${arr.length>50?`<p class="tiny muted">Mostrando 50 de ${arr.length}.</p>`:''}`:'<div class="empty">No hay movimientos nuevos para importar.</div>'}
-async function confirmImport(){if(!pendingImport?.transactions.length)return;const importedMonth=monthKey(pendingImport.transactions[0].date);state.transactions.push(...pendingImport.transactions);reconcileInternalTransfers();await save();const n=pendingImport.transactions.length;pendingImport=null;$('#importDialog').close();renderMonthOptions(false);if(importedMonth&&[...$('#monthSelect').options].some(o=>o.value===importedMonth))$('#monthSelect').value=importedMonth;renderCategories();render();toast(`${n} movimientos importados.`)}
+async function confirmImport(){
+  if(!pendingImport?.transactions.length)return;
+  const importedMonth=monthKey(pendingImport.transactions[0].date),n=pendingImport.transactions.length;
+  const result=reconcileImportedFx(state.transactions,pendingImport.transactions);
+  if(result.removeIds.size)state.transactions=state.transactions.filter(t=>!result.removeIds.has(t.id));
+  state.transactions.push(...pendingImport.transactions);reconcileInternalTransfers();await save();pendingImport=null;
+  $('#importDialog').close();renderMonthOptions(false);
+  if(importedMonth&&[...$('#monthSelect').options].some(o=>o.value===importedMonth))$('#monthSelect').value=importedMonth;
+  renderCategories();render();
+  toast(`${n} movimientos importados.${result.reconciled?' '+result.reconciled+' apuntes de cambio conciliados.':''}`);
+}
+
+function dateOfSelectedMonth(){
+  const selected=$('#monthSelect').value,current=monthKey(localDate());
+  return selected&&selected!==current?`${selected}-01`:localDate();
+}
+function activeFxMarket(){return state?.settings?.fxMarket||'oficial'}
+function fmtQuoteDate(value){
+  if(!value)return 'sin fecha';
+  try{return new Intl.DateTimeFormat('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}).format(new Date(value))}
+  catch{return 'fecha no disponible'}
+}
+function renderFxQuote(row){
+  const q=fxQuote?.market===activeFxMarket()?fxQuote:null;
+  const good=q&&isFreshQuote(q);
+  $('#fxDisplayMarket').value=activeFxMarket();
+  $('#fxMarketLabel').textContent=activeFxMarket()==='oficial'?'Oficial':activeFxMarket()==='bolsa'?'MEP / Bolsa':'Blue';
+  $('#fxBuyPrice').textContent=q?formatMoney(q.venta):'—';
+  $('#fxSellPrice').textContent=q?formatMoney(q.compra):'—';
+  $('#fxQuoteStatus').textContent=q
+    ?`${good?'Actualizada':'Cotización antigua'} · ${fmtQuoteDate(q.updatedAt)} · DolarAPI`
+    :'Sin cotización disponible (actualizá o ingresá el valor manualmente).';
+  $('#fxQuoteStatus').classList.toggle('stale',!good);
+  const visible=row?.month===monthKey(localDate())&&good;
+  const fxOut=row?.exchangeOut.ARS||0,fxIn=row?.exchangeIn.USD||0;
+  $('#fxMonthSummary').textContent=fxOut||fxIn
+    ?`Cambios del mes: −${formatMoney(fxOut)} ARS / +${formatMoney(fxIn,'USD')} USD`
+    :'Sin compras de dólares registradas este mes.';
+  $('#fxEstimatedTotal').hidden=!visible;
+  if(visible){
+    $('#fxEstimatedTotalValue').textContent=formatMoney(row.total.ARS+row.total.USD*q.compra);
+  }
+}
+async function refreshDollarQuote(){
+  if(!state)return;
+  const market=activeFxMarket(),seq=++fxFetchSeq;
+  $('#fxQuoteStatus').textContent='Consultando cotización…';
+  try{
+    const result=await fetchDollarQuote(market);
+    if(!state||seq!==fxFetchSeq||market!==activeFxMarket())return;
+    fxQuote=result;
+    if($('#fxDialog').open&&$('#fxMarket').value===market&&!fxUserRate){
+      $('#fxRate').value=result.venta;
+      updateFxCost();
+    }
+  }catch(e){
+    if(!state||seq!==fxFetchSeq)return;
+    if(fxQuote?.market!==market)fxQuote=null;
+    $('#fxQuoteStatus').textContent='No fue posible actualizar el dólar. Podés ingresar la cotización manualmente.';
+  }
+  if(state)renderFxQuote(monthlyLedger().rows.find(x=>x.month===$('#monthSelect').value));
+}
+function updateFxCost(){
+  const cost=pesoCost($('#fxUsd').value,$('#fxRate').value);
+  if(!fxPaidManual)$('#fxPesos').value=Number.isFinite(cost)?cost:'';
+  const actual=Number($('#fxPesos').value),quoted=Number($('#fxRate').value);
+  $('#fxPreview').textContent=Number.isFinite(actual)&&actual>0&&quoted>0
+    ?`Se descontarán ${formatMoney(actual)} ARS y se acreditarán ${formatMoney(Number($('#fxUsd').value)||0,'USD')} USD. Tipo efectivo: ${formatMoney(actual/(Number($('#fxUsd').value)||1))} ARS/USD.`
+    :'Completá los USD, los pesos abonados y la cotización.';
+  const old=$('#fxEditGroup').value;
+  const historic=($('#fxDate').value||'')<localDate();
+  $('#fxHistoricalNote').hidden=!historic;
+}
+function openFxDialog(group=''){
+  const pair=group?state.transactions.filter(t=>t.fxGroup===group&&t.source==='Manual FX'):[];
+  const ars=pair.find(t=>t.currency==='ARS'),usd=pair.find(t=>t.currency==='USD');
+  const editing=!!(ars&&usd);
+  fxUserRate=editing;fxPaidManual=editing;
+  $('#fxEditGroup').value=editing?group:'';
+  $('#fxDate').value=editing?ars.date:dateOfSelectedMonth();
+  $('#fxUsd').value=editing?usd.amount:'';
+  $('#fxPesos').value=editing?ars.amount:'';
+  $('#fxMarket').value=editing?ars.fxMarket||'oficial':activeFxMarket();
+  $('#fxRate').value=editing?ars.fxRate||'':fxQuote?.market===activeFxMarket()?fxQuote.venta:'';
+  $('#fxDialogTitle').textContent=editing?'Editar compra de dólares':'Registrar compra de dólares';
+  $('#deleteFxBtn').hidden=!editing;
+  $('#fxDialog').showModal();
+  updateFxCost();
+  if(!editing&&(!fxQuote||fxQuote.market!==activeFxMarket()||!isFreshQuote(fxQuote)))refreshDollarQuote();
+  setTimeout(()=>$('#fxUsd').focus(),40);
+}
+async function saveFxPurchase(){
+  const date=$('#fxDate').value,usd=Number($('#fxUsd').value),pesos=Number($('#fxPesos').value),
+    rate=Number($('#fxRate').value),market=$('#fxMarket').value,
+    group=$('#fxEditGroup').value;
+  const pair=group?state.transactions.filter(t=>t.fxGroup===group&&t.source==='Manual FX'):[];
+  if(!state.openingBalances?.confirmed)return toast('Primero confirmá tu saldo inicial en Ajustes para evitar descuadres.',true);
+  const book=monthlyLedger(),start=book.startMonth;
+  if(date.slice(0,7)<start)return toast('La compra está fuera del mes base configurado.',true);
+  if(!(Number.isFinite(usd)&&usd>0&&Number.isFinite(pesos)&&pesos>0&&Number.isFinite(rate)&&rate>0))
+    return toast('Ingresá importes y cotización mayores a cero.',true);
+  if(!group&&(!fxQuote||fxQuote.market!==market||!isFreshQuote(fxQuote))){
+    if(!confirm('La cotización en línea no está actualizada o es manual. ¿Confirmás que el tipo de cambio ingresado es el real de tu compra?'))return;
+  }
+  if(!group&&date<localDate()&&!confirm('Esta compra tiene una fecha anterior. Comprobá que los pesos pagados y los USD recibidos sean reales, no calculados con el valor actual. ¿Continuar?'))return;
+  if(!group){
+    const existingFx=state.transactions.filter(t=>t.date===date&&!t.fxGroup&&t.internalTransfer&&
+      /(?:compra|venta) de d[oó]lar(?:es)?/i.test(t.description||''));
+    const similar=existingFx.some(t=>
+      (t.currency==='USD'&&t.type==='credit'&&Math.abs(t.amount-usd)>0.01)||
+      (t.currency==='ARS'&&t.type==='debit'&&Math.abs(t.amount-pesos)>0.01));
+    if(similar&&!confirm('Ya hay una compra de dólares en el PDF de esta fecha con un importe distinto. ¿Es otra operación independiente? Si no, cancelá para evitar duplicados.'))return;
+  }
+  let newPair;
+  try{
+    newPair=createDollarPurchase({date,usd,pesos,rate:pesos/usd,market,group,
+      quotedAt:!fxUserRate&&fxQuote?.market===market?fxQuote.updatedAt:'',
+      ids:[pair.find(t=>t.currency==='ARS')?.id,pair.find(t=>t.currency==='USD')?.id]});
+  }catch(e){return toast(e.message,true)}
+  newPair.forEach(t=>{t.fxReferenceRate=rate});
+  // Aprovecha el apunte bancario ya importado cuando coincide exactamente con
+  // fecha, importe, moneda y signo; así no se duplica la compra al agregarla.
+  const reused=new Set(),created=[];
+  for(const leg of newPair){
+    let match=!group?state.transactions.find(t=>t.source!=='Manual FX'&&!t.fxGroup&&
+      /(?:compra|venta) de d[oó]lar(?:es)?/i.test(t.description||'')&&
+      t.internalTransfer&&t.date===leg.date&&t.currency===leg.currency&&t.type===leg.type&&
+      Math.abs(t.amount-leg.amount)<=0.01):null;
+    if(match){
+      Object.assign(match,{fxGroup:leg.fxGroup,fxLeg:leg.fxLeg,fxRate:leg.fxRate,fxMarket:leg.fxMarket,
+        fxQuotedAt:leg.fxQuotedAt,fxReferenceRate:leg.fxReferenceRate,internalTransfer:true,internalTransferReason:'fx'});
+      reused.add(match.id);
+    }else created.push(leg);
+  }
+  if(!group&&!created.length){
+    await save();render();$('#fxDialog').close();
+    return toast('La compra ya figuraba en tus movimientos bancarios.');
+  }
+  if(group)state.transactions=state.transactions.filter(t=>!(t.fxGroup===group&&t.source==='Manual FX'));
+  state.transactions.push(...created);
+  reconcileInternalTransfers();
+  await save();$('#fxDialog').close();renderMonthOptions();renderCategories();render();
+  toast(`Compra registrada: −${formatMoney(pesos)} / +${formatMoney(usd,'USD')}${reused.size?' (conciliada con PDF)':''}`);
+}
+async function deleteFxPurchase(){
+  const group=$('#fxEditGroup').value;
+  if(!group||!confirm('¿Eliminar ambos apuntes de esta compra de dólares?'))return;
+  state.transactions=state.transactions.filter(t=>!(t.fxGroup===group&&t.source==='Manual FX'));
+  await save();$('#fxDialog').close();renderMonthOptions();renderCategories();render();toast('Compra de dólares eliminada.');
+}
+
 function editTransaction(id){
   const t=state.transactions.find(x=>x.id===id);if(!t)return;
+  if(t.fxGroup&&t.source==='Manual FX'&&state.transactions.filter(x=>x.fxGroup===t.fxGroup&&x.source==='Manual FX').length===2){
+    return openFxDialog(t.fxGroup);
+  }
   $('#txDialogTitle').textContent='Editar movimiento';$('#editTxId').value=t.id;
   $('#editDate').value=t.date;$('#editDescription').value=t.description;$('#editMerchant').value=t.merchant||'';
   $('#editCategory').value=t.category;
@@ -163,6 +320,7 @@ function editTransaction(id){
   $('#editCurrency').value=t.currency;$('#editAmount').value=t.amount;
   $('#learnRule').checked=!t.savingsAction;$('#deleteTxBtn').hidden=false;$('#transactionDialog').showModal();
 }
+
 function addTransaction(type='debit'){
   const selectedMonth=$('#monthSelect').value,current=monthKey(localDate());
   const date=selectedMonth&&selectedMonth!==current?`${selectedMonth}-01`:localDate();
@@ -275,6 +433,27 @@ function bind(){
   $('#addIncomeDesktopBtn')?.addEventListener('click',()=>addTransaction('credit'));
   $('#addSavingDesktopBtn')?.addEventListener('click',()=>addTransaction('save'));
   $('#addSavingBtn')?.addEventListener('click',()=>addTransaction('save'));
+  $('#buyDollarBtn')?.addEventListener('click',()=>openFxDialog());
+  $('#buyDollarDesktopBtn')?.addEventListener('click',()=>openFxDialog());
+  $('#refreshFxBtn').onclick=refreshDollarQuote;
+  $('#fxDisplayMarket').onchange=async e=>{
+    state.settings.fxMarket=e.target.value;fxQuote=null;await save();render();refreshDollarQuote();
+  };
+  $('#fxSaveBtn').onclick=saveFxPurchase;$('#deleteFxBtn').onclick=deleteFxPurchase;
+  $('#fxUsd').oninput=updateFxCost;
+  $('#fxDate').onchange=updateFxCost;
+  $('#fxRate').oninput=()=>{fxUserRate=true;updateFxCost()};
+  $('#fxPesos').oninput=()=>{fxPaidManual=true;updateFxCost()};
+  $('#fxMarket').onchange=async e=>{
+    fxUserRate=false;fxPaidManual=false;$('#fxRate').value='';$('#fxPesos').value='';
+    if(e.target.value==='manual'){fxUserRate=true;updateFxCost();return}
+    if(e.target.value!==activeFxMarket()){
+      state.settings.fxMarket=e.target.value;
+      await save();
+    }
+    await refreshDollarQuote();
+    updateFxCost();
+  };
   $('#monthSelect').onchange=render;
   $('#prevMonthBtn').onclick=()=>changeMonth(-1);$('#nextMonthBtn').onclick=()=>changeMonth(1);
   $('#searchInput').oninput=renderTransactions;$('#currencyFilter').onchange=renderTransactions;$('#sourceFilter').onchange=renderTransactions;
