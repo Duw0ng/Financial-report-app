@@ -428,7 +428,9 @@ function renderOpeningSettings(){
       :'No se pudo determinar una apertura exacta con los PDF actuales. Podés dejar el saldo como estimado o configurarlo manualmente.';
   $('#resetOpeningBtn').hidden=!state.openingBalances?.confirmed;
   const months=state.transactions.map(t=>monthKey(t.date)).filter(Boolean).sort();
-  $('#openingMonth').value=b.startMonth||months[0]||monthKey(localDate());
+  $('#openingMonth').value=state.openingBalances?.confirmed||auto.mode==='pdf'
+    ?b.startMonth||months[0]||monthKey(localDate())
+    :months[0]||monthKey(localDate());
   for(const c of ['ARS','USD']){
     $('#openingAvailable'+c).value=b.available?.[c]??0;
     $('#openingSavings'+c).value=b.savings?.[c]??0;
@@ -448,6 +450,13 @@ async function saveOpeningSettings(){
   if(!Number.isFinite(goal)||goal<0)return toast('La meta de ahorro no puede ser negativa.',true);
   state.openingBalances=b;state.settings.savingsGoalARS=goal;
   await save();renderMonthOptions();render();toast('Saldo inicial y meta de ahorro guardados.');
+}
+async function saveSavingsGoal(){
+  const goal=Number($('#savingsGoalARS').value);
+  if(!Number.isFinite(goal)||goal<0)return toast('La meta de ahorro no puede ser negativa.',true);
+  state.settings.savingsGoalARS=goal;
+  await save();render();
+  toast('Meta de ahorro guardada, sin cambiar el saldo inicial.');
 }
 async function useAutomaticOpening(){
   state.openingBalances=defaultOpening();
@@ -503,6 +512,7 @@ function bind(){
   $('#backupInput').onchange=e=>handleBackupFile(e.target.files[0]);$('#confirmRestoreBtn').onclick=confirmRestore;
   $('#wipeBtn').onclick=wipe;$('#addCategoryBtn').onclick=addCategory;
   $('#saveOpeningBtn').onclick=saveOpeningSettings;
+  $('#saveGoalBtn').onclick=saveSavingsGoal;
   $('#resetOpeningBtn').onclick=useAutomaticOpening;
   $('#autoLockSelect').onchange=async e=>{state.settings.autoLock=Number(e.target.value);await save();setupAutoLock();toast('Bloqueo automático actualizado.')};
   ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,resetActivity,{passive:true}));
