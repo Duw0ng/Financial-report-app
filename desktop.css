@@ -47,3 +47,11 @@
   .app-main{grid-template-columns:minmax(360px,430px) minmax(0,1fr)}
   .transactions{max-height:calc(100vh - 250px)}
 }
+
+@media(min-width:1000px){
+  .fx-panel{grid-column:1/-1;display:grid;grid-template-columns:1fr auto;align-items:center}
+  .fx-panel-head,.fx-quotes,.fx-panel>.tiny,.fx-valuation{grid-column:1}
+  .fx-panel>#buyDollarBtn{grid-column:2;grid-row:1/4;white-space:nowrap}
+  .quick-dollar{background:#183049;color:#bfdbfe;border-color:#2b5477}
+  .quick-dollar:hover{background:#214161}
+}
