@@ -78,3 +78,12 @@ El disponible se calcula a partir de los movimientos que registra la app, no con
 - La cotización procede de una API de terceros, no de Brubank ni de Naranja X, y puede estar desactualizada fuera del horario de mercado. Si no funciona la red, puedes introducir una cotización manual.
 - Por privacidad, solo se consulta la cotización pública desde el navegador. No se envían los saldos, los movimientos, el monto a cambiar ni la clave de la bóveda al proveedor.
 - Antes de registrar compras, confirmar saldo inicial en Ajustes y realizar un backup cifrado. En compras de fechas anteriores usar importes verdaderos y no el precio de hoy.
+
+## Saldos del PDF y ajustes opcionales (v0.5)
+- El botón **⚙ Ajustes** aparece también en la cabecera de escritorio.
+- El cálculo intenta reconstruir automáticamente el saldo inicial de cada banco y moneda usando `Saldo` de los movimientos importados (Brubank y Naranja X). Cada serie bancaria se valida contra sus movimientos; si no concilia, conserva un saldo **estimado** y no inventa un saldo de partida.
+- **No es necesario introducir manualmente un saldo inicial para usar la app.** En el panel se muestra si los saldos provienen de los PDF, de una configuración manual, o solo de los movimientos registrados.
+- Se eliminó la advertencia amarilla que exigía configurar un valor al trabajar con saldos estimados. Permanecen alertas pertinentes si una configuración manual deja movimientos fuera de su mes base.
+- La compra de USD se puede registrar con saldo estimado previa confirmación; nunca se bloquea por no haber configurado la apertura.
+- El saldo inicial manual sigue siendo opcional, para casos de PDF incompleto, cuentas no importadas, efectivo fuera del banco u otros ajustes. El botón **Volver al cálculo automático del PDF** desactiva ese ajuste sin borrar movimientos.
+- Los saldos de PDF corresponden a fechas de sus extractos: no son una conexión bancaria ni una garantía de disponibilidad actual; importar los extractos recientes mejora la precisión.
