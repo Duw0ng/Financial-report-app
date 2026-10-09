@@ -1,10 +1,10 @@
-import {projectSavings,normalizeGoal,goalForecast} from './planning.js';
+import {projectSavings,normalizeGoal,goalForecast,conversion} from './planning.js';
 import {isFreshQuote} from './exchange.js';
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nowMonth=()=>new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
-let env=null,bound=false,lastState=null,startTouched=false;
+let env=null,bound=false,lastState=null,startTouched=false,previousCurrency='ARS';
 
 const money=(value,currency)=>env.money(value,currency);
 const quote=()=>{const q=env.getQuote();return q&&isFreshQuote(q)?q:null};
@@ -21,7 +21,8 @@ function currentSaved(currency){
 function applyPreferences(){
   const p=env.getState()?.settings?.projection||{};
   $('projectionCurrency').value=p.currency==='USD'?'USD':'ARS';
-  $('projectionMonthly').value=Number.isFinite(p.monthly)?p.monthly:100000;
+  previousCurrency=$('projectionCurrency').value;
+  $('projectionMonthly').value=Number.isFinite(p.monthly)?p.monthly:(previousCurrency==='USD'?100:100000);
   $('projectionMonths').value=Number.isInteger(p.months)?p.months:12;
   startTouched=Number.isFinite(p.initial);
   $('projectionInitial').value=startTouched?p.initial:currentSaved($('projectionCurrency').value);
@@ -65,6 +66,7 @@ function renderGoalCards(){
     const alt=f.convertedTarget==null?'sin cotización reciente':money(f.convertedTarget,altCurrency);
     const eta=f.monthsToGoal===null?'Sin plazo: agregá un aporte mensual':
       f.monthsToGoal===0?'Meta alcanzada':
+      f.finishMonth===null?'El plazo supera los 50 años con ese aporte':
       `En ${f.monthsToGoal} mes${f.monthsToGoal===1?'':'es'} (aprox. ${titleMonth(f.finishMonth)})`;
     let targetNote='';
     if(f.deadline){
@@ -131,7 +133,16 @@ export function setupPlanning(options){
   env=options;
   if(bound)return;
   bound=true;
-  $('projectionCurrency').onchange=()=>{if(!startTouched)$('projectionInitial').value=currentSaved($('projectionCurrency').value);renderProjection()};
+  $('projectionCurrency').onchange=()=>{
+    const current=$('projectionCurrency').value;
+    const oldMonthly=Number($('projectionMonthly').value);
+    const currentQuote=quote();
+    const converted=currentQuote?conversion(oldMonthly,previousCurrency,current,currentQuote):null;
+    $('projectionMonthly').value=converted===null?(current==='USD'?100:100000):converted;
+    previousCurrency=current;startTouched=false;
+    $('projectionInitial').value=currentSaved(current);
+    renderProjection();
+  };
   for(const id of ['projectionInitial','projectionMonthly','projectionMonths']){
     $(id).addEventListener('input',()=>{if(id==='projectionInitial')startTouched=true;renderProjection()});
   }
