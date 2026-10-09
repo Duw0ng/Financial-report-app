@@ -56,3 +56,50 @@ dialog{width:min(580px,calc(100% - 24px));max-height:90vh;border:1px solid var(-
 
 .balance-source{margin:0 2px;color:var(--muted);font-size:12px}
 @media(max-width:1100px){.desktop-quick-actions{flex-wrap:wrap;justify-content:flex-end}}
+
+/* Metas y proyecciones de ahorro · v0.6 */
+.planning-section{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+.planning-panel{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.planning-heading{display:flex;align-items:start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.planning-heading h2{margin:0 0 5px;font-size:20px}
+.planning-heading p{margin:0}
+.planning-heading .primary{white-space:nowrap}
+.planning-symbol{border:1px solid #30486b;background:#17263d;border-radius:12px;padding:10px 12px;font-size:21px}
+.planning-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px}
+.planning-form label{min-width:0;margin:0;font-size:12px;color:var(--muted)}
+.planning-form input,.planning-form select{width:100%;min-width:0}
+.projection-results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px}
+.plan-stat{min-width:0;border:1px solid var(--line);background:#0e1627;border-radius:14px;padding:14px}
+.plan-stat span{display:block;font-size:12px;color:var(--muted)}
+.plan-stat strong{display:block;margin-top:7px;font-size:20px;overflow-wrap:anywhere}
+.plan-stat:first-child{border-color:#166534;background:linear-gradient(145deg,#123326,#121a2c)}
+.plan-stat:first-child strong{color:var(--accent)}
+.projection-milestones{display:grid;gap:7px;margin-top:16px}
+.sim-meter-row{display:grid;grid-template-columns:64px minmax(30px,1fr) auto;align-items:center;gap:9px;font-size:11px}
+.sim-meter-row span{color:var(--muted);font-variant-numeric:tabular-nums}
+.sim-meter-row strong{font-variant-numeric:tabular-nums;text-align:right}
+.sim-meter-track{height:8px;overflow:hidden;background:#0b1020;border-radius:99px}
+.sim-meter-track>div{height:100%;background:linear-gradient(90deg,#34d399,#60a5fa);border-radius:99px}
+.planning-foot{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+.planning-foot span{flex:1 1 180px}
+.goal-cards{display:grid;gap:12px;margin-top:12px}
+.goal-card{min-width:0;border:1px solid #2a3952;background:#0e1627;border-radius:16px;padding:16px}
+.goal-card-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.goal-card h3{font-size:16px;overflow-wrap:anywhere;margin:0}
+.goal-card-head button{padding:7px 12px;font-size:12px;white-space:nowrap}
+.goal-numbers{display:flex;justify-content:space-between;align-items:end;gap:10px;flex-wrap:wrap;margin-top:14px}
+.goal-numbers strong{font-size:22px;color:var(--accent);overflow-wrap:anywhere}
+.goal-numbers span{font-size:12px;color:var(--muted)}
+.goal-progress{height:11px;border-radius:99px;background:#26334a;margin:11px 0;overflow:hidden}
+.goal-progress>div{height:100%;background:linear-gradient(90deg,#34d399,#60a5fa);border-radius:99px;transition:width .2s}
+.goal-card p{margin:6px 0;font-size:12px;line-height:1.5}
+.goal-card .goal-eta{color:#93c5fd;font-weight:700}
+.goal-card .goal-deadline{color:#fcd34d}
+.goal-empty{border:1px dashed #344763;border-radius:14px;padding:22px;color:var(--muted);font-size:13px;line-height:1.6}
+@media(max-width:520px){
+  .planning-panel{padding:14px}.planning-form{gap:10px}
+  .planning-form input,.planning-form select{padding:11px 10px;font-size:13px}
+  .projection-results{grid-template-columns:1fr 1fr;gap:8px}
+  .plan-stat{padding:12px}.plan-stat strong{font-size:17px}
+  .sim-meter-row{grid-template-columns:61px minmax(28px,1fr) auto;font-size:10px;gap:5px}
+}

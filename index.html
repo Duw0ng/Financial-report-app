@@ -115,6 +115,45 @@
         <p id="fxMonthSummary" class="fx-month-summary tiny muted"></p>
         <button id="buyDollarBtn" type="button" class="primary">＋ Registrar compra de USD</button>
       </section>
+      <section class="planning-section" id="planningSection" aria-label="Simulación y metas de ahorro">
+        <article class="planning-panel">
+          <div class="planning-heading">
+            <div><h2>Simulador de ahorro</h2><p class="muted small">¿Cuánto reunirías ahorrando una cantidad fija cada mes?</p></div>
+            <span class="planning-symbol">📈</span>
+          </div>
+          <div class="planning-form">
+            <label>Moneda principal
+              <select id="projectionCurrency"><option value="ARS">Pesos argentinos (ARS)</option><option value="USD">Dólares (USD)</option></select>
+            </label>
+            <label>Aporte mensual
+              <input id="projectionMonthly" type="number" min="0" step="0.01" value="100000" inputmode="decimal" />
+            </label>
+            <label>Durante cuántos meses
+              <input id="projectionMonths" type="number" min="1" max="600" step="1" value="12" inputmode="numeric" />
+            </label>
+            <label>Monto inicial
+              <input id="projectionInitial" type="number" min="0" step="0.01" value="0" inputmode="decimal" />
+            </label>
+          </div>
+          <p class="tiny muted">El monto inicial propone tus ahorros actuales, pero podés cambiarlo para simular cualquier escenario.</p>
+          <div id="projectionResults" class="projection-results" aria-live="polite"></div>
+          <div id="projectionMilestones" class="projection-milestones"></div>
+          <p id="projectionQuoteNote" class="tiny muted"></p>
+          <div class="planning-foot">
+            <span class="tiny muted">Proyección nominal: sin intereses, inflación ni cambios futuros del dólar. No registra movimientos reales.</span>
+            <button id="saveProjectionBtn" type="button" class="ghost">Guardar simulación</button>
+          </div>
+        </article>
+        <article class="planning-panel goals-panel">
+          <div class="planning-heading">
+            <div><h2>Mis metas de ahorro</h2><p class="muted small">Viaje a Japón, PC nueva, vivienda o lo que quieras planificar.</p></div>
+            <button id="addGoalBtn" type="button" class="primary">＋ Nueva meta</button>
+          </div>
+          <p id="goalsCount" class="tiny muted"></p>
+          <div id="goalCards" class="goal-cards"></div>
+          <p class="tiny muted">El monto «ya reunido» se asigna manualmente a cada objetivo para evitar contar los mismos ahorros en varias metas. Crear o editar metas no mueve dinero en tus bancos.</p>
+        </article>
+      </section>
       <section class="panel">
         <div class="panel-head">
           <div><h2>Gastos por categoría</h2><p class="muted small">Solo débitos del mes seleccionado.</p></div>
@@ -192,6 +231,26 @@
       <div class="dialog-actions split">
         <button id="deleteFxBtn" type="button" class="danger ghost" hidden>Eliminar compra</button>
         <button id="fxSaveBtn" type="button" class="primary">Registrar cambio</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="goalDialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-head"><h2 id="goalDialogTitle">Crear meta de ahorro</h2><button value="cancel" class="icon-btn" title="Cerrar">✕</button></div>
+      <input type="hidden" id="goalId" />
+      <label>Nombre de la meta<input id="goalTitle" type="text" maxlength="100" placeholder="Ej. Viaje a Japón" /></label>
+      <div class="two-col">
+        <label>Moneda<select id="goalCurrency"><option value="USD">Dólares (USD)</option><option value="ARS">Pesos (ARS)</option></select></label>
+        <label>Monto objetivo<input id="goalTarget" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Ej. 4000" /></label>
+        <label>Dinero ya reservado para esta meta<input id="goalSaved" type="number" min="0" step="0.01" inputmode="decimal" value="0" /></label>
+        <label>Cuánto agregarías por mes<input id="goalMonthly" type="number" min="0" step="0.01" inputmode="decimal" value="0" /></label>
+      </div>
+      <label>Fecha límite deseada (opcional)<input id="goalDeadline" type="month" /></label>
+      <p class="privacy-box tiny">El plazo estimado se recalcula automáticamente. El ahorro asignado a esta meta es una referencia propia y no descuenta ni altera el dinero disponible en tus cuentas.</p>
+      <div class="dialog-actions split">
+        <button id="deleteGoalBtn" type="button" class="danger ghost" hidden>Eliminar meta</button>
+        <button id="saveGoalDetailsBtn" type="button" class="primary">Guardar meta</button>
       </div>
     </form>
   </dialog>

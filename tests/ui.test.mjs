@@ -21,7 +21,18 @@ test('la app usa cambio real y no cachea cotización externa',()=>{
   assert.ok(read('app-v3.js').includes('inferOpeningFromBankStatements'));
   assert.ok(read('index.html').includes('id="saveGoalBtn"'));
   assert.ok(read('app-v3.js').includes('async function saveSavingsGoal()'));
-  assert.ok(loader.includes('app-v3.js?v=10'));
+  assert.ok(loader.includes('app-v3.js?v=11'));
   assert.ok(app.includes('createDollarPurchase({date,usd,pesos,rate:pesos/usd'));
   assert.ok(exchange.includes("'https://dolarapi.com/v1/dolares/oficial'"));
+});
+
+test('controles del simulador y metas están disponibles sin cambiar el saldo bancario',()=>{
+  const html=read('index.html'),view=read('planning-ui.js');
+  const ids=[...new Set([...view.matchAll(/\$\('([^']+)'\)/g)].map(m=>m[1]))];
+  for(const id of ids)assert.ok(html.includes('id="'+id+'"'),'Falta el control del planificador: '+id);
+  assert.ok(read('app-v3.js').includes('state.goals??=[]'));
+  assert.ok(view.includes('await env.save()'));
+  assert.ok(view.includes('esc(f.title)'));
+  assert.ok(read('sw.js').includes("'./planning.js','./planning-ui.js'"));
+  assert.ok(read('app-loader.js').includes('app-v3.js?v=11'));
 });
