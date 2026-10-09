@@ -227,8 +227,7 @@ function updateFxCost(){
     ?`Se descontarán ${formatMoney(actual)} ARS y se acreditarán ${formatMoney(Number($('#fxUsd').value)||0,'USD')} USD. Tipo efectivo: ${formatMoney(actual/(Number($('#fxUsd').value)||1))} ARS/USD.`
     :'Completá los USD, los pesos abonados y la cotización.';
   const old=$('#fxEditGroup').value;
-  const oldDate=old?state.transactions.find(t=>t.fxGroup===old)?.date:null;
-  const historic=($('#fxDate').value||'')<localDate()&&($('#fxDate').value||'')!==oldDate;
+  const historic=($('#fxDate').value||'')<localDate();
   $('#fxHistoricalNote').hidden=!historic;
 }
 function openFxDialog(group=''){
@@ -263,6 +262,14 @@ async function saveFxPurchase(){
     if(!confirm('La cotización en línea no está actualizada o es manual. ¿Confirmás que el tipo de cambio ingresado es el real de tu compra?'))return;
   }
   if(!group&&date<localDate()&&!confirm('Esta compra tiene una fecha anterior. Comprobá que los pesos pagados y los USD recibidos sean reales, no calculados con el valor actual. ¿Continuar?'))return;
+  if(!group){
+    const existingFx=state.transactions.filter(t=>t.date===date&&!t.fxGroup&&t.internalTransfer&&
+      /(?:compra|venta) de d[oó]lar(?:es)?/i.test(t.description||''));
+    const similar=existingFx.some(t=>
+      (t.currency==='USD'&&t.type==='credit'&&Math.abs(t.amount-usd)>0.01)||
+      (t.currency==='ARS'&&t.type==='debit'&&Math.abs(t.amount-pesos)>0.01));
+    if(similar&&!confirm('Ya hay una compra de dólares en el PDF de esta fecha con un importe distinto. ¿Es otra operación independiente? Si no, cancelá para evitar duplicados.'))return;
+  }
   let newPair;
   try{
     newPair=createDollarPurchase({date,usd,pesos,rate:pesos/usd,market,group,
