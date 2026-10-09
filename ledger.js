@@ -30,7 +30,7 @@ export function buildMonthlyLedger(transactions = [], opening = {}, throughMonth
   const source = Array.isArray(transactions) ? transactions : [];
   const months = source.map(t => transactionMonth(t.date)).filter(Boolean).sort();
   const confirmed = !!opening.confirmed && validMonth(opening.startMonth);
-  const start = confirmed ? opening.startMonth : (months[0] || (validMonth(throughMonth) ? throughMonth : '2026-01'));
+  const start = confirmed ? opening.startMonth : [months[0], validMonth(opening.startMonth) ? opening.startMonth : '', validMonth(throughMonth) ? throughMonth : ''].filter(Boolean).sort()[0] || '2026-01';
   const end = [start, ...months, validMonth(throughMonth) ? throughMonth : ''].filter(Boolean).sort().at(-1);
   const available = confirmed ? fromOpening(opening, 'available') : values();
   const savings = confirmed ? fromOpening(opening, 'savings') : values();
