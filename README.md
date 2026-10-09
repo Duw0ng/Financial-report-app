@@ -67,3 +67,14 @@ El disponible se calcula a partir de los movimientos que registra la app, no con
 4. Cambiar un gasto del mes anterior y verificar el efecto en el saldo del mes siguiente.
 5. Importar un PDF ya cargado y verificar que no se dupliquen los movimientos.
 6. Abrir un mes sin movimientos y confirmar que arrastra el saldo anterior.
+
+## Cotización de dólar y compra de USD (v0.4)
+- Visualización del dólar **Oficial / MEP-Bolsa / Blue**, precio de **venta** para comprar y precio de **compra** para vender, desde [DolarAPI](https://dolarapi.com/docs/argentina/operations/get-dolar-oficial). Consulta inicial al desbloquear, botón de refrescar y renovación aproximada cada 10 minutos.
+- Al registrar **compra de USD** se crean dos apuntes relacionados: **sale el importe ARS efectivamente pagado** y **entran los USD realmente recibidos**. No son ingresos ni gastos, y pasan al mes siguiente a sus respectivos saldos disponibles.
+- El importe en pesos se sugiere desde la cotización de venta, pero puede editarse si el banco aplica un precio distinto, comisiones o impuestos dentro del importe total pagado. Se conserva tanto la cotización de referencia como el tipo efectivo de la operación.
+- Si importas un PDF que coincida con fecha, importe, moneda y dirección de apuntes manuales de cambio, los reemplaza por los del banco (en lugar de duplicarlos). También puede aprovechar un apunte bancario ya cargado.
+- Muestra un total orientativo en ARS: ARS acumulados + USD acumulados multiplicados por la cotización de **compra**, la usada para valorar una posible venta. Este estimado solo se muestra para el mes actual con cotización suficientemente reciente; no altera el historial.
+- Cada movimiento conserva el importe y tipo de cambio al registrar la compra. **El precio de hoy nunca reescribe transacciones históricas.**
+- La cotización procede de una API de terceros, no de Brubank ni de Naranja X, y puede estar desactualizada fuera del horario de mercado. Si no funciona la red, puedes introducir una cotización manual.
+- Por privacidad, solo se consulta la cotización pública desde el navegador. No se envían los saldos, los movimientos, el monto a cambiar ni la clave de la bóveda al proveedor.
+- Antes de registrar compras, confirmar saldo inicial en Ajustes y realizar un backup cifrado. En compras de fechas anteriores usar importes verdaderos y no el precio de hoy.
