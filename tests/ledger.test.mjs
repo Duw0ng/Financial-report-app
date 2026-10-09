@@ -63,3 +63,9 @@ test('ancla confirmada excluye meses anteriores; sin ancla el primero retrocede'
   assert.equal(draft.rows[0].closingAvailable.ARS,100);
   assert.equal(shiftMonth('2026-12'),'2027-01');
 });
+
+test('bóveda vacía muestra el mes actual y el siguiente sin movimientos',()=>{
+  const rows=buildMonthlyLedger([],{confirmed:false,startMonth:'2026-10'},'2026-11').rows;
+  assert.deepEqual(rows.map(r=>r.month),['2026-10','2026-11']);
+  assert.equal(rows[1].closingAvailable.ARS,0);
+});
