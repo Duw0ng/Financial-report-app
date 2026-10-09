@@ -57,6 +57,7 @@
           <button id="addIncomeDesktopBtn" type="button" class="quick-add quick-income" title="Agregar ingreso manual">＋ Ingreso</button>
           <button id="addSavingDesktopBtn" type="button" class="quick-add quick-saving" title="Pasar dinero a ahorros">🏦 Ahorrar</button>
           <button id="buyDollarDesktopBtn" type="button" class="quick-add quick-dollar" title="Registrar compra de dólares">💱 Comprar USD</button>
+          <button id="settingsDesktopBtn" type="button" class="quick-add quick-settings" title="Ajustes y privacidad">⚙ Ajustes</button>
         </div>
         <button id="installBtn" class="icon-btn" hidden title="Instalar app">⬇</button>
         <button id="lockBtn" class="icon-btn" title="Bloquear">🔒</button>
@@ -82,6 +83,7 @@
         <article class="summary-card saving-card"><span>Ahorros acumulados USD</span><strong id="savingsUSD">U$S 0</strong></article>
         <article class="summary-card"><span>Total USD (disponible + ahorros)</span><strong id="totalUSD">U$S 0</strong></article>
       </section>
+      <p id="balanceSourceNote" class="balance-source muted small" aria-live="polite">Calculando saldos…</p>
       <div id="baselineWarning" class="ledger-warning" role="status" hidden></div>
       <div class="ledger-controls"><p id="monthMovementDetails" class="muted small ledger-details"></p><button id="addSavingBtn" type="button" class="quick-add quick-saving">＋ Registrar ahorro</button></div>
       <p id="internalTransferNote" class="tiny muted" aria-live="polite"></p>
@@ -232,8 +234,10 @@
         </select>
       </label>
       <hr />
-      <h3>Saldo inicial y ahorros</h3>
-      <p class="tiny muted">Indicá el dinero que tenías al comenzar el mes base. El cierre de cada mes pasa automáticamente al siguiente. Si tu historial comienza a mitad de mes, usá el saldo que había al comenzar ese mes.</p>
+      <h3>Saldo inicial (opcional) y ahorros</h3>
+      <p id="openingStatus" class="tiny muted"></p>
+      <p class="tiny muted">No hace falta indicar un saldo inicial para registrar movimientos. La app intenta reconstruirlo a partir de los saldos que figuran en tus PDF bancarios. Si no puede conciliar los extractos, mostrará un saldo estimado.</p>
+      <p class="tiny muted">Usá esta configuración solo para ajustar manualmente la apertura: ingresá el saldo disponible y los ahorros que tenías al comenzar el mes indicado, no el saldo de hoy.</p>
       <label>Mes base<input id="openingMonth" type="month" /></label>
       <div class="two-col">
         <label>Disponible ARS inicial<input id="openingAvailableARS" type="number" step="0.01" value="0" /></label>
@@ -242,7 +246,8 @@
         <label>Ahorros USD iniciales<input id="openingSavingsUSD" type="number" step="0.01" min="0" value="0" /></label>
       </div>
       <label>Meta mensual de ahorro ARS (opcional)<input id="savingsGoalARS" type="number" step="0.01" min="0" value="0" /></label>
-      <button id="saveOpeningBtn" type="button" class="primary full">Guardar saldos y meta</button>
+      <button id="saveOpeningBtn" type="button" class="primary full">Usar saldo inicial manual</button>
+      <button id="resetOpeningBtn" type="button" class="ghost full" hidden>Volver al cálculo automático del PDF</button>
       <p class="tiny muted">Una transferencia a ahorros disminuye el disponible y aumenta los ahorros, sin considerarse un gasto. Si aparece en un PDF, editá ese movimiento en vez de duplicarlo manualmente.</p>
       <hr />
       <h3>Exportar</h3>
