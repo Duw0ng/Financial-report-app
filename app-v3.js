@@ -257,12 +257,14 @@ async function saveFxPurchase(){
   if(!group&&(!fxQuote||fxQuote.market!==market||!isFreshQuote(fxQuote))){
     if(!confirm('La cotización en línea no está actualizada o es manual. ¿Confirmás que el tipo de cambio ingresado es el real de tu compra?'))return;
   }
+  if(!group&&date<localDate()&&!confirm('Esta compra tiene una fecha anterior. Comprobá que los pesos pagados y los USD recibidos sean reales, no calculados con el valor actual. ¿Continuar?'))return;
   let newPair;
   try{
-    newPair=createDollarPurchase({date,usd,pesos,rate,market,group,
+    newPair=createDollarPurchase({date,usd,pesos,rate:pesos/usd,market,group,
       quotedAt:!fxUserRate&&fxQuote?.market===market?fxQuote.updatedAt:'',
       ids:[pair.find(t=>t.currency==='ARS')?.id,pair.find(t=>t.currency==='USD')?.id]});
   }catch(e){return toast(e.message,true)}
+  newPair.forEach(t=>{t.fxReferenceRate=rate});
   // Aprovecha el apunte bancario ya importado cuando coincide exactamente con
   // fecha, importe, moneda y signo; así no se duplica la compra al agregarla.
   const reused=new Set(),created=[];
@@ -273,7 +275,7 @@ async function saveFxPurchase(){
       Math.abs(t.amount-leg.amount)<=0.01):null;
     if(match){
       Object.assign(match,{fxGroup:leg.fxGroup,fxLeg:leg.fxLeg,fxRate:leg.fxRate,fxMarket:leg.fxMarket,
-        fxQuotedAt:leg.fxQuotedAt,internalTransfer:true,internalTransferReason:'fx'});
+        fxQuotedAt:leg.fxQuotedAt,fxReferenceRate:leg.fxReferenceRate,internalTransfer:true,internalTransferReason:'fx'});
       reused.add(match.id);
     }else created.push(leg);
   }
