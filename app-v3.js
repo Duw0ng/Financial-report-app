@@ -9,7 +9,7 @@ const defaultCategories=['Supermercado','Comida','Transporte','Servicios','Suscr
 const icons={Supermercado:'🛒',Comida:'🍔',Transporte:'🚗',Servicios:'💡',Suscripciones:'🔁',Tarjeta:'💳',Compras:'🛍️',Transferencias:'↔️',Impuestos:'🏛️',Rendimientos:'📈',Salud:'♥',Educación:'📚',Entretenimiento:'🎮',Ingresos:'＋',Ahorros:'🏦',Otros:'•'};
 let state=null,password=null,pendingImport=null,deferredInstall=null,restoreBlob=null,lastActivity=Date.now(),autoLockTimer=null;
 
-function defaultOpening(){return {confirmed:false,startMonth:'',available:{ARS:0,USD:0},savings:{ARS:0,USD:0}}}
+function defaultOpening(){return {confirmed:false,startMonth:monthKey(localDate()),available:{ARS:0,USD:0},savings:{ARS:0,USD:0}}}
 function emptyState(){return {version:3,transactions:[],categories:[...defaultCategories],rules:[],settings:{autoLock:10,savingsGoalARS:0},openingBalances:defaultOpening(),createdAt:new Date().toISOString()}}
 function migrateState(){
   if(!state)return;
