@@ -1,7 +1,7 @@
 name: Finanzas - sintaxis y balance
 on:
   push:
-    branches: [main, feature/carryover-savings-20261008]
+    branches: [main, 'feature/**']
   pull_request:
 
 permissions:
