@@ -99,7 +99,12 @@
           <div><span>Compra de USD · precio de venta</span><strong id="fxBuyPrice">—</strong></div>
           <div><span>Venta de USD · precio de compra</span><strong id="fxSellPrice">—</strong></div>
         </div>
-        <p class="tiny muted">Mercado: <strong id="fxMarketLabel">Oficial</strong> · <span id="fxQuoteStatus" aria-live="polite">Esperando cotización…</span></p>
+        <div class="fx-market-line">
+          <label class="fx-market-picker">Cotización
+            <select id="fxDisplayMarket" aria-label="Mercado de cotización"><option value="oficial">Oficial</option><option value="bolsa">MEP / Bolsa</option><option value="blue">Blue</option></select>
+          </label>
+          <p class="tiny muted">Mercado: <strong id="fxMarketLabel">Oficial</strong> · <span id="fxQuoteStatus" aria-live="polite">Esperando cotización…</span></p>
+        </div>
         <div id="fxEstimatedTotal" class="fx-valuation" hidden>
           <span>Patrimonio estimado en pesos a cotización de compra actual</span>
           <strong id="fxEstimatedTotalValue">—</strong>
