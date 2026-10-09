@@ -182,6 +182,7 @@ function fmtQuoteDate(value){
 function renderFxQuote(row){
   const q=fxQuote?.market===activeFxMarket()?fxQuote:null;
   const good=q&&isFreshQuote(q);
+  $('#fxDisplayMarket').value=activeFxMarket();
   $('#fxMarketLabel').textContent=activeFxMarket()==='oficial'?'Oficial':activeFxMarket()==='bolsa'?'MEP / Bolsa':'Blue';
   $('#fxBuyPrice').textContent=q?formatMoney(q.venta):'—';
   $('#fxSellPrice').textContent=q?formatMoney(q.compra):'—';
@@ -424,6 +425,9 @@ function bind(){
   $('#buyDollarBtn')?.addEventListener('click',()=>openFxDialog());
   $('#buyDollarDesktopBtn')?.addEventListener('click',()=>openFxDialog());
   $('#refreshFxBtn').onclick=refreshDollarQuote;
+  $('#fxDisplayMarket').onchange=async e=>{
+    state.settings.fxMarket=e.target.value;fxQuote=null;await save();render();refreshDollarQuote();
+  };
   $('#fxSaveBtn').onclick=saveFxPurchase;$('#deleteFxBtn').onclick=deleteFxPurchase;
   $('#fxUsd').oninput=updateFxCost;
   $('#fxDate').onchange=updateFxCost;
